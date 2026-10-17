@@ -1,0 +1,1179 @@
+{
+ "_source": "EV_CHARGER_SA states: https://github.com/briadelour/SolarEdgeEVCharger example_raw_json.zip (2026-01). keba_charging: https://github.com/briadelour/solaredge-evcharger-ha/issues/6 comment by rolfschmidli (2026-07), KEBA ONE EV Pro plus two ON_OFF load controllers; vehicle ids and plate redacted",
+ "responses": {
+  "charging": {
+   "@c": ".SiteDevicesResponse",
+   "status": "PASSED",
+   "httpStatus": 200,
+   "warningMessages": [],
+   "infoMessages": [],
+   "errorMessages": [],
+   "isUpdated": true,
+   "fieldLastUpdateTS": 1768052703901,
+   "updateRefreshRate": 3,
+   "globalCommunicationStatus": "ACTIVE",
+   "excessPvSupported": true,
+   "essentialDevicesSupported": false,
+   "rfIdCardsListSupported": "XXXXXXXXXXX",
+   "billingProviders": [],
+   "devices": [],
+   "devicesByType": {
+    "EV_CHARGER": [
+     {
+      "communicationStatus": "ACTIVE",
+      "lastUpdated": 1768052703941,
+      "lastCommunicationTime": 1768052702163,
+      "features": {
+       "authorization": "false",
+       "charging-history": "true",
+       "connected-car": "true",
+       "current-session-data": "true",
+       "schedules": "true",
+       "solar-charging": "true",
+       "stop-start": "true"
+      },
+      "reporterId": 1000001479067354,
+      "serialNumber": "05F60667",
+      "iconName": "AUTO",
+      "name": "EV Charger with Boost",
+      "manufacturer": "Solaredge",
+      "model": "EV Charger",
+      "macAddress": null,
+      "swVersion": "2.2.10",
+      "type": "EV_CHARGER_SA",
+      "activationMode": "MANUAL",
+      "remoteOpInfo": null,
+      "deviceTriggers": [
+       {
+        "enable": false,
+        "scheduledDays": [
+         "SUNDAY",
+         "MONDAY",
+         "TUESDAY",
+         "WEDNESDAY",
+         "THURSDAY",
+         "FRIDAY",
+         "SATURDAY"
+        ],
+        "startTime": 600,
+        "endTime": 720,
+        "smartSaver": false,
+        "triggerId": 1000003486326916
+       }
+      ],
+      "isScenarioSupported": false,
+      "connectionStatus": "CHARGING",
+      "connectionSubStatus": "CHARGING",
+      "deviceStatus": "ACTIVE",
+      "actionOperationDetails": [
+       {
+        "actionOp": "OFF",
+        "actionText": "STOP_CHARGING",
+        "defaultOp": true
+       }
+      ],
+      "sessionStartTime": 1768052656000,
+      "firstSessionStartTime": 1690210944000,
+      "chargerStatus": "CHARGING",
+      "sessionActive": true,
+      "sessionDuration": 38,
+      "sessionEnergy": 93,
+      "billingSettings": null,
+      "currentSessionBillingAccount": null,
+      "sessionSolarUsage": "NONE",
+      "sessionDistance": 0.66867,
+      "activationState": "ACTIVE",
+      "chargerStatusSubTitle": [
+       {
+        "subStatusTitle": "CURRENT_POWER_WH",
+        "numericValue": 9508.838
+       }
+      ],
+      "excessPV": -2,
+      "applianceData": {
+       "id": "XXXXXXXXXXXXXXXXXXXX",
+       "siteApplianceUUID": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+       "manufacturer": "Hyundai",
+       "model": "IONIQ 6 Standard 53 kWh (151 Hp) BEV",
+       "manufacturerYear": 2023,
+       "alias": "Ioniq",
+       "color": "#9999ff",
+       "physicalId": "XXX-0000",
+       "type": "VEHICLE",
+       "energyMultiplicands": [
+        {
+         "multiplicandEnum": "DISTANCE",
+         "multiplicandValue": 0.0071900003
+        }
+       ],
+       "originalEnergyMultiplicands": [
+        {
+         "multiplicandEnum": "DISTANCE",
+         "multiplicandValue": 0.00719
+        }
+       ],
+       "firstTimeSession": 1690215196000,
+       "origin": "GLOBAL"
+      },
+      "latestSessionApplianceAlias": {
+       "VEHICLE": "Ioniq"
+      },
+      "isAuthorizationEnabled": false,
+      "ratedPower": 9600
+     }
+    ]
+   },
+   "gridProgram": null
+  },
+  "pluggedin_not_charging": {
+   "@c": ".SiteDevicesResponse",
+   "status": "PASSED",
+   "httpStatus": 200,
+   "warningMessages": [],
+   "infoMessages": [],
+   "errorMessages": [],
+   "isUpdated": true,
+   "fieldLastUpdateTS": 1768052755136,
+   "updateRefreshRate": 3,
+   "globalCommunicationStatus": "ACTIVE",
+   "excessPvSupported": true,
+   "essentialDevicesSupported": false,
+   "rfIdCardsListSupported": "XXXXXXXXXXX",
+   "billingProviders": [],
+   "devices": [],
+   "devicesByType": {
+    "EV_CHARGER": [
+     {
+      "communicationStatus": "ACTIVE",
+      "lastUpdated": 1768052755163,
+      "lastCommunicationTime": 1768052753149,
+      "features": {
+       "authorization": "false",
+       "charging-history": "true",
+       "connected-car": "true",
+       "current-session-data": "true",
+       "schedules": "true",
+       "solar-charging": "true",
+       "stop-start": "true"
+      },
+      "reporterId": 1000001479067354,
+      "serialNumber": "05F60667",
+      "iconName": "AUTO",
+      "name": "EV Charger with Boost",
+      "manufacturer": "Solaredge",
+      "model": "EV Charger",
+      "macAddress": null,
+      "swVersion": "2.2.10",
+      "type": "EV_CHARGER_SA",
+      "activationMode": "MANUAL",
+      "remoteOpInfo": {
+       "requestedAction": "DEVICE_ACTIVATION_STATE",
+       "status": "SUCCESS",
+       "errorCode": null,
+       "errorDescription": null
+      },
+      "deviceTriggers": [
+       {
+        "enable": false,
+        "scheduledDays": [
+         "SUNDAY",
+         "MONDAY",
+         "TUESDAY",
+         "WEDNESDAY",
+         "THURSDAY",
+         "FRIDAY",
+         "SATURDAY"
+        ],
+        "startTime": 600,
+        "endTime": 720,
+        "smartSaver": false,
+        "triggerId": 1000003486326916
+       }
+      ],
+      "isScenarioSupported": false,
+      "connectionStatus": "CONNECTED",
+      "deviceStatus": "ACTIVE",
+      "actionOperationDetails": [
+       {
+        "actionOp": "ON",
+        "actionText": "CHARGE_NOW",
+        "defaultOp": true
+       }
+      ],
+      "sessionStartTime": 1768052656000,
+      "firstSessionStartTime": 1690210944000,
+      "chargerStatus": "PLUGGED_IN",
+      "sessionActive": true,
+      "sessionDuration": 83,
+      "sessionEnergy": 213,
+      "billingSettings": null,
+      "currentSessionBillingAccount": null,
+      "sessionSolarUsage": "NONE",
+      "sessionDistance": 1.5314701,
+      "activationState": "ACTIVE",
+      "chargerStatusSubTitle": [],
+      "excessPV": -2,
+      "applianceData": {
+       "id": "XXXXXXXXXXXXXXXXXXXX",
+       "siteApplianceUUID": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+       "manufacturer": "Hyundai",
+       "model": "IONIQ 6 Standard 53 kWh (151 Hp) BEV",
+       "manufacturerYear": 2023,
+       "alias": "Ioniq",
+       "color": "#9999ff",
+       "physicalId": "XXX-0000",
+       "type": "VEHICLE",
+       "energyMultiplicands": [
+        {
+         "multiplicandEnum": "DISTANCE",
+         "multiplicandValue": 0.0071900003
+        }
+       ],
+       "originalEnergyMultiplicands": [
+        {
+         "multiplicandEnum": "DISTANCE",
+         "multiplicandValue": 0.00719
+        }
+       ],
+       "firstTimeSession": 1690215196000,
+       "origin": "GLOBAL"
+      },
+      "latestSessionApplianceAlias": {
+       "VEHICLE": "Ioniq"
+      },
+      "isAuthorizationEnabled": false,
+      "ratedPower": 9600
+     }
+    ]
+   },
+   "gridProgram": null
+  },
+  "pluggedin_pending_schedule": {
+   "@c": ".SiteDevicesResponse",
+   "status": "PASSED",
+   "httpStatus": 200,
+   "warningMessages": [],
+   "infoMessages": [],
+   "errorMessages": [],
+   "isUpdated": true,
+   "fieldLastUpdateTS": 1768052872809,
+   "updateRefreshRate": 3,
+   "globalCommunicationStatus": "ACTIVE",
+   "excessPvSupported": true,
+   "essentialDevicesSupported": false,
+   "rfIdCardsListSupported": "XXXXXXXXXXX",
+   "billingProviders": [],
+   "devices": [],
+   "devicesByType": {
+    "EV_CHARGER": [
+     {
+      "communicationStatus": "ACTIVE",
+      "lastUpdated": 1768052872862,
+      "lastCommunicationTime": 1768052872451,
+      "features": {
+       "authorization": "false",
+       "charging-history": "true",
+       "connected-car": "true",
+       "current-session-data": "true",
+       "schedules": "true",
+       "solar-charging": "true",
+       "stop-start": "true"
+      },
+      "reporterId": 1000001479067354,
+      "serialNumber": "05F60667",
+      "iconName": "AUTO",
+      "name": "EV Charger with Boost",
+      "manufacturer": "Solaredge",
+      "model": "EV Charger",
+      "macAddress": null,
+      "swVersion": "2.2.10",
+      "type": "EV_CHARGER_SA",
+      "activationMode": "AUTO",
+      "remoteOpInfo": {
+       "requestedAction": "DEVICE_SETTINGS",
+       "status": "SUCCESS",
+       "errorCode": null,
+       "errorDescription": null
+      },
+      "deviceTriggers": [
+       {
+        "enable": true,
+        "scheduledDays": [
+         "SUNDAY",
+         "MONDAY",
+         "TUESDAY",
+         "WEDNESDAY",
+         "THURSDAY",
+         "FRIDAY",
+         "SATURDAY"
+        ],
+        "startTime": 600,
+        "endTime": 720,
+        "smartSaver": false,
+        "triggerId": 1000003486326916
+       }
+      ],
+      "isScenarioSupported": false,
+      "connectionStatus": "CONNECTED",
+      "deviceStatus": "ACTIVE",
+      "actionOperationDetails": [
+       {
+        "actionOp": "ON",
+        "actionText": "CHARGE_NOW",
+        "defaultOp": true
+       }
+      ],
+      "sessionStartTime": 1768052656000,
+      "firstSessionStartTime": 1690210944000,
+      "chargerStatus": "PLUGGED_IN",
+      "sessionActive": true,
+      "sessionDuration": 83,
+      "sessionEnergy": 213,
+      "billingSettings": null,
+      "currentSessionBillingAccount": null,
+      "sessionSolarUsage": "NONE",
+      "sessionDistance": 1.5314701,
+      "activationState": "ACTIVE",
+      "scheduleTitle": "NEXT_SCHEDULED_CHARGE",
+      "chargerStatusSubTitle": [],
+      "scheduleInfo": {
+       "startDate": 1768057200000,
+       "endDate": 1768064400000
+      },
+      "excessPV": -2,
+      "applianceData": {
+       "id": "XXXXXXXXXXXXXXXXXXXX",
+       "siteApplianceUUID": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+       "manufacturer": "Hyundai",
+       "model": "IONIQ 6 Standard 53 kWh (151 Hp) BEV",
+       "manufacturerYear": 2023,
+       "alias": "Ioniq",
+       "color": "#9999ff",
+       "physicalId": "XXX-0000",
+       "type": "VEHICLE",
+       "energyMultiplicands": [
+        {
+         "multiplicandEnum": "DISTANCE",
+         "multiplicandValue": 0.0071900003
+        }
+       ],
+       "originalEnergyMultiplicands": [
+        {
+         "multiplicandEnum": "DISTANCE",
+         "multiplicandValue": 0.00719
+        }
+       ],
+       "firstTimeSession": 1690215196000,
+       "origin": "GLOBAL"
+      },
+      "latestSessionApplianceAlias": {
+       "VEHICLE": "Ioniq"
+      },
+      "isAuthorizationEnabled": false,
+      "ratedPower": 9600
+     }
+    ]
+   },
+   "gridProgram": null
+  },
+  "pluggedin_pending_solar": {
+   "@c": ".SiteDevicesResponse",
+   "status": "PASSED",
+   "httpStatus": 200,
+   "warningMessages": [],
+   "infoMessages": [],
+   "errorMessages": [],
+   "isUpdated": true,
+   "fieldLastUpdateTS": 1768052827199,
+   "updateRefreshRate": 3,
+   "globalCommunicationStatus": "ACTIVE",
+   "excessPvSupported": true,
+   "essentialDevicesSupported": false,
+   "rfIdCardsListSupported": "XXXXXXXXXXX",
+   "billingProviders": [],
+   "devices": [],
+   "devicesByType": {
+    "EV_CHARGER": [
+     {
+      "communicationStatus": "ACTIVE",
+      "lastUpdated": 1768052827225,
+      "lastCommunicationTime": 1768052825075,
+      "features": {
+       "authorization": "false",
+       "charging-history": "true",
+       "connected-car": "true",
+       "current-session-data": "true",
+       "schedules": "true",
+       "solar-charging": "true",
+       "stop-start": "true"
+      },
+      "reporterId": 1000001479067354,
+      "serialNumber": "05F60667",
+      "iconName": "AUTO",
+      "name": "EV Charger with Boost",
+      "manufacturer": "Solaredge",
+      "model": "EV Charger",
+      "macAddress": null,
+      "swVersion": "2.2.10",
+      "type": "EV_CHARGER_SA",
+      "activationMode": "AUTO",
+      "remoteOpInfo": {
+       "requestedAction": "DEVICE_SETTINGS",
+       "status": "SUCCESS",
+       "errorCode": null,
+       "errorDescription": null
+      },
+      "deviceTriggers": [
+       {
+        "enable": false,
+        "scheduledDays": [
+         "SUNDAY",
+         "MONDAY",
+         "TUESDAY",
+         "WEDNESDAY",
+         "THURSDAY",
+         "FRIDAY",
+         "SATURDAY"
+        ],
+        "startTime": 600,
+        "endTime": 720,
+        "smartSaver": false,
+        "triggerId": 1000003486326916
+       }
+      ],
+      "isScenarioSupported": false,
+      "connectionStatus": "CONNECTED",
+      "deviceStatus": "ACTIVE",
+      "actionOperationDetails": [
+       {
+        "actionOp": "ON",
+        "actionText": "CHARGE_NOW",
+        "defaultOp": true
+       }
+      ],
+      "sessionStartTime": 1768052656000,
+      "firstSessionStartTime": 1690210944000,
+      "chargerStatus": "PLUGGED_IN",
+      "sessionActive": true,
+      "sessionDuration": 83,
+      "sessionEnergy": 213,
+      "billingSettings": null,
+      "currentSessionBillingAccount": null,
+      "sessionSolarUsage": "NONE",
+      "sessionDistance": 1.5314701,
+      "activationState": "ACTIVE",
+      "chargerStatusSubTitle": [],
+      "excessPV": -1,
+      "applianceData": {
+       "id": "XXXXXXXXXXXXXXXXXXXX",
+       "siteApplianceUUID": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+       "manufacturer": "Hyundai",
+       "model": "IONIQ 6 Standard 53 kWh (151 Hp) BEV",
+       "manufacturerYear": 2023,
+       "alias": "Ioniq",
+       "color": "#9999ff",
+       "physicalId": "XXX-0000",
+       "type": "VEHICLE",
+       "energyMultiplicands": [
+        {
+         "multiplicandEnum": "DISTANCE",
+         "multiplicandValue": 0.0071900003
+        }
+       ],
+       "originalEnergyMultiplicands": [
+        {
+         "multiplicandEnum": "DISTANCE",
+         "multiplicandValue": 0.00719
+        }
+       ],
+       "firstTimeSession": 1690215196000,
+       "origin": "GLOBAL"
+      },
+      "latestSessionApplianceAlias": {
+       "VEHICLE": "Ioniq"
+      },
+      "isAuthorizationEnabled": false,
+      "ratedPower": 9600
+     }
+    ]
+   },
+   "gridProgram": null
+  },
+  "unplugged_not_charging": {
+   "@c": ".SiteDevicesResponse",
+   "status": "PASSED",
+   "httpStatus": 200,
+   "warningMessages": [],
+   "infoMessages": [],
+   "errorMessages": [],
+   "isUpdated": true,
+   "fieldLastUpdateTS": 1768052435586,
+   "updateRefreshRate": 3,
+   "globalCommunicationStatus": "ACTIVE",
+   "excessPvSupported": true,
+   "essentialDevicesSupported": false,
+   "rfIdCardsListSupported": "XXXXXXXXXXX",
+   "billingProviders": [],
+   "devices": [],
+   "devicesByType": {
+    "EV_CHARGER": [
+     {
+      "communicationStatus": "ACTIVE",
+      "lastUpdated": 1768052435810,
+      "lastCommunicationTime": 1768052435329,
+      "features": {
+       "authorization": "false",
+       "charging-history": "true",
+       "connected-car": "true",
+       "current-session-data": "true",
+       "schedules": "true",
+       "solar-charging": "true",
+       "stop-start": "true"
+      },
+      "reporterId": 1000001479067354,
+      "serialNumber": "05F60667",
+      "iconName": "AUTO",
+      "name": "EV Charger with Boost",
+      "manufacturer": "Solaredge",
+      "model": "EV Charger",
+      "macAddress": null,
+      "swVersion": "2.2.10",
+      "type": "EV_CHARGER_SA",
+      "activationMode": "MANUAL",
+      "remoteOpInfo": null,
+      "deviceTriggers": [
+       {
+        "enable": false,
+        "scheduledDays": [
+         "SUNDAY",
+         "MONDAY",
+         "TUESDAY",
+         "WEDNESDAY",
+         "THURSDAY",
+         "FRIDAY",
+         "SATURDAY"
+        ],
+        "startTime": 600,
+        "endTime": 720,
+        "smartSaver": false,
+        "triggerId": 1000003486326916
+       }
+      ],
+      "isScenarioSupported": false,
+      "connectionStatus": "DISCONNECTED",
+      "deviceStatus": "ACTIVE",
+      "actionOperationDetails": [],
+      "sessionStartTime": 1767719998000,
+      "firstSessionStartTime": 1690210944000,
+      "chargerStatus": "NOT_CONNECTED",
+      "sessionActive": false,
+      "sessionDuration": 8761,
+      "sessionEnergy": 23437,
+      "billingSettings": null,
+      "currentSessionBillingAccount": null,
+      "sessionSolarUsage": "NONE",
+      "sessionDistance": 168.51204,
+      "activationState": "ACTIVE",
+      "chargerStatusSubTitle": [],
+      "excessPV": -2,
+      "applianceData": {
+       "id": "XXXXXXXXXXXXXXXXXXXX",
+       "siteApplianceUUID": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+       "manufacturer": "Hyundai",
+       "model": "IONIQ 6 Standard 53 kWh (151 Hp) BEV",
+       "manufacturerYear": 2023,
+       "alias": "Ioniq",
+       "color": "#9999ff",
+       "physicalId": "XXX-0000",
+       "type": "VEHICLE",
+       "energyMultiplicands": [
+        {
+         "multiplicandEnum": "DISTANCE",
+         "multiplicandValue": 0.0071900003
+        }
+       ],
+       "originalEnergyMultiplicands": [
+        {
+         "multiplicandEnum": "DISTANCE",
+         "multiplicandValue": 0.00719
+        }
+       ],
+       "firstTimeSession": 1690215196000,
+       "origin": "GLOBAL"
+      },
+      "latestSessionApplianceAlias": {
+       "VEHICLE": "Ioniq"
+      },
+      "isAuthorizationEnabled": false,
+      "ratedPower": 9600
+     }
+    ]
+   },
+   "gridProgram": null
+  },
+  "unplugged_not_charging_excesspv_and_schedule_disabled": {
+   "@c": ".SiteDevicesResponse",
+   "status": "PASSED",
+   "httpStatus": 200,
+   "warningMessages": [],
+   "infoMessages": [],
+   "errorMessages": [],
+   "isUpdated": true,
+   "fieldLastUpdateTS": 1768223178712,
+   "updateRefreshRate": 3,
+   "globalCommunicationStatus": "ACTIVE",
+   "excessPvSupported": true,
+   "essentialDevicesSupported": false,
+   "rfIdCardsListSupported": "XXXXXXXXXXX",
+   "billingProviders": [],
+   "devices": [],
+   "devicesByType": {
+    "EV_CHARGER": [
+     {
+      "communicationStatus": "ACTIVE",
+      "lastUpdated": 1768223178792,
+      "lastCommunicationTime": 1768223177397,
+      "features": {
+       "authorization": "false",
+       "charging-history": "true",
+       "connected-car": "true",
+       "current-session-data": "true",
+       "schedules": "true",
+       "solar-charging": "true",
+       "stop-start": "true"
+      },
+      "reporterId": 1000001479067354,
+      "serialNumber": "05F60667",
+      "iconName": "AUTO",
+      "name": "EV Charger with Boost",
+      "manufacturer": "Solaredge",
+      "model": "EV Charger",
+      "macAddress": null,
+      "swVersion": "2.2.10",
+      "type": "EV_CHARGER_SA",
+      "activationMode": "MANUAL",
+      "remoteOpInfo": null,
+      "deviceTriggers": [
+       {
+        "enable": false,
+        "scheduledDays": [
+         "SUNDAY",
+         "MONDAY",
+         "TUESDAY",
+         "WEDNESDAY",
+         "THURSDAY",
+         "FRIDAY",
+         "SATURDAY"
+        ],
+        "startTime": 600,
+        "endTime": 720,
+        "smartSaver": false,
+        "triggerId": 1000003486326916
+       }
+      ],
+      "isScenarioSupported": false,
+      "connectionStatus": "DISCONNECTED",
+      "deviceStatus": "ACTIVE",
+      "actionOperationDetails": [],
+      "sessionStartTime": 1768165659000,
+      "firstSessionStartTime": 1690210944000,
+      "chargerStatus": "NOT_CONNECTED",
+      "sessionActive": false,
+      "sessionDuration": 13791,
+      "sessionEnergy": 35517,
+      "billingSettings": null,
+      "currentSessionBillingAccount": null,
+      "sessionSolarUsage": "NONE",
+      "sessionDistance": 255.36723,
+      "activationState": "ACTIVE",
+      "chargerStatusSubTitle": [],
+      "excessPV": -2,
+      "applianceData": {
+       "id": "XXXXXXXXXXXXXXXXXXXX",
+       "siteApplianceUUID": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+       "manufacturer": "Hyundai",
+       "model": "IONIQ 6 Standard 53 kWh (151 Hp) BEV",
+       "manufacturerYear": 2023,
+       "alias": "Ioniq",
+       "color": "#9999ff",
+       "physicalId": "XXX-0000",
+       "type": "VEHICLE",
+       "energyMultiplicands": [
+        {
+         "multiplicandEnum": "DISTANCE",
+         "multiplicandValue": 0.0071900003
+        }
+       ],
+       "originalEnergyMultiplicands": [
+        {
+         "multiplicandEnum": "DISTANCE",
+         "multiplicandValue": 0.00719
+        }
+       ],
+       "firstTimeSession": 1690215196000,
+       "origin": "GLOBAL"
+      },
+      "latestSessionApplianceAlias": {
+       "VEHICLE": "Ioniq"
+      },
+      "isAuthorizationEnabled": false,
+      "ratedPower": 9600
+     }
+    ]
+   },
+   "gridProgram": null
+  },
+  "unplugged_not_charging_excesspv_disabled_but_schedule_enabled_M-F1000-1200_SASU0900-2000": {
+   "@c": ".SiteDevicesResponse",
+   "status": "PASSED",
+   "httpStatus": 200,
+   "warningMessages": [],
+   "infoMessages": [],
+   "errorMessages": [],
+   "isUpdated": true,
+   "fieldLastUpdateTS": 1768223388914,
+   "updateRefreshRate": 3,
+   "globalCommunicationStatus": "ACTIVE",
+   "excessPvSupported": true,
+   "essentialDevicesSupported": false,
+   "rfIdCardsListSupported": "XXXXXXXXXXX",
+   "billingProviders": [],
+   "devices": [],
+   "devicesByType": {
+    "EV_CHARGER": [
+     {
+      "communicationStatus": "ACTIVE",
+      "lastUpdated": 1768223388960,
+      "lastCommunicationTime": 1768223388526,
+      "features": {
+       "authorization": "false",
+       "charging-history": "true",
+       "connected-car": "true",
+       "current-session-data": "true",
+       "schedules": "true",
+       "solar-charging": "true",
+       "stop-start": "true"
+      },
+      "reporterId": 1000001479067354,
+      "serialNumber": "05F60667",
+      "iconName": "AUTO",
+      "name": "EV Charger with Boost",
+      "manufacturer": "Solaredge",
+      "model": "EV Charger",
+      "macAddress": null,
+      "swVersion": "2.2.10",
+      "type": "EV_CHARGER_SA",
+      "activationMode": "AUTO",
+      "remoteOpInfo": {
+       "requestedAction": "DEVICE_SETTINGS",
+       "status": "SUCCESS",
+       "errorCode": null,
+       "errorDescription": null
+      },
+      "deviceTriggers": [
+       {
+        "enable": true,
+        "scheduledDays": [
+         "MONDAY",
+         "TUESDAY",
+         "WEDNESDAY",
+         "THURSDAY",
+         "FRIDAY"
+        ],
+        "startTime": 600,
+        "endTime": 720,
+        "smartSaver": false
+       },
+       {
+        "enable": true,
+        "scheduledDays": [
+         "SUNDAY",
+         "SATURDAY"
+        ],
+        "startTime": 540,
+        "endTime": 1200,
+        "smartSaver": false
+       }
+      ],
+      "isScenarioSupported": false,
+      "connectionStatus": "DISCONNECTED",
+      "deviceStatus": "ACTIVE",
+      "actionOperationDetails": [],
+      "sessionStartTime": 1768165659000,
+      "firstSessionStartTime": 1690210944000,
+      "chargerStatus": "NOT_CONNECTED",
+      "sessionActive": false,
+      "sessionDuration": 13791,
+      "sessionEnergy": 35517,
+      "billingSettings": null,
+      "currentSessionBillingAccount": null,
+      "sessionSolarUsage": "NONE",
+      "sessionDistance": 255.36723,
+      "activationState": "ACTIVE",
+      "chargerProblemDetails": "CABLE_NOT_PROPERLY_ATTACHED",
+      "scheduleTitle": "NEXT_SCHEDULED_CHARGE",
+      "chargerStatusSubTitle": [],
+      "scheduleInfo": {
+       "startDate": 1768230000000,
+       "endDate": 1768237200000
+      },
+      "excessPV": -2,
+      "applianceData": {
+       "id": "XXXXXXXXXXXXXXXXXXXX",
+       "siteApplianceUUID": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+       "manufacturer": "Hyundai",
+       "model": "IONIQ 6 Standard 53 kWh (151 Hp) BEV",
+       "manufacturerYear": 2023,
+       "alias": "Ioniq",
+       "color": "#9999ff",
+       "physicalId": "XXX-0000",
+       "type": "VEHICLE",
+       "energyMultiplicands": [
+        {
+         "multiplicandEnum": "DISTANCE",
+         "multiplicandValue": 0.0071900003
+        }
+       ],
+       "originalEnergyMultiplicands": [
+        {
+         "multiplicandEnum": "DISTANCE",
+         "multiplicandValue": 0.00719
+        }
+       ],
+       "firstTimeSession": 1690215196000,
+       "origin": "GLOBAL"
+      },
+      "latestSessionApplianceAlias": {
+       "VEHICLE": "Ioniq"
+      },
+      "isAuthorizationEnabled": false,
+      "ratedPower": 9600
+     }
+    ]
+   },
+   "gridProgram": null
+  },
+  "unplugged_not_charging_excesspv_enabled_schedule_disabled": {
+   "@c": ".SiteDevicesResponse",
+   "status": "PASSED",
+   "httpStatus": 200,
+   "warningMessages": [],
+   "infoMessages": [],
+   "errorMessages": [],
+   "isUpdated": true,
+   "fieldLastUpdateTS": 1768223276651,
+   "updateRefreshRate": 3,
+   "globalCommunicationStatus": "ACTIVE",
+   "excessPvSupported": true,
+   "essentialDevicesSupported": false,
+   "rfIdCardsListSupported": "XXXXXXXXXXX",
+   "billingProviders": [],
+   "devices": [],
+   "devicesByType": {
+    "EV_CHARGER": [
+     {
+      "communicationStatus": "ACTIVE",
+      "lastUpdated": 1768223276698,
+      "lastCommunicationTime": 1768223276399,
+      "features": {
+       "authorization": "false",
+       "charging-history": "true",
+       "connected-car": "true",
+       "current-session-data": "true",
+       "schedules": "true",
+       "solar-charging": "true",
+       "stop-start": "true"
+      },
+      "reporterId": 1000001479067354,
+      "serialNumber": "05F60667",
+      "iconName": "AUTO",
+      "name": "EV Charger with Boost",
+      "manufacturer": "Solaredge",
+      "model": "EV Charger",
+      "macAddress": null,
+      "swVersion": "2.2.10",
+      "type": "EV_CHARGER_SA",
+      "activationMode": "AUTO",
+      "remoteOpInfo": {
+       "requestedAction": "DEVICE_SETTINGS",
+       "status": "SUCCESS",
+       "errorCode": null,
+       "errorDescription": null
+      },
+      "deviceTriggers": [
+       {
+        "enable": false,
+        "scheduledDays": [
+         "SUNDAY",
+         "MONDAY",
+         "TUESDAY",
+         "WEDNESDAY",
+         "THURSDAY",
+         "FRIDAY",
+         "SATURDAY"
+        ],
+        "startTime": 600,
+        "endTime": 720,
+        "smartSaver": false,
+        "triggerId": 1000003486326916
+       }
+      ],
+      "isScenarioSupported": false,
+      "connectionStatus": "DISCONNECTED",
+      "deviceStatus": "ACTIVE",
+      "actionOperationDetails": [],
+      "sessionStartTime": 1768165659000,
+      "firstSessionStartTime": 1690210944000,
+      "chargerStatus": "NOT_CONNECTED",
+      "sessionActive": false,
+      "sessionDuration": 13791,
+      "sessionEnergy": 35517,
+      "billingSettings": null,
+      "currentSessionBillingAccount": null,
+      "sessionSolarUsage": "NONE",
+      "sessionDistance": 255.36723,
+      "activationState": "ACTIVE",
+      "chargerProblemDetails": "CABLE_NOT_PROPERLY_ATTACHED",
+      "chargerStatusSubTitle": [],
+      "excessPV": -1,
+      "applianceData": {
+       "id": "XXXXXXXXXXXXXXXXXXXX",
+       "siteApplianceUUID": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+       "manufacturer": "Hyundai",
+       "model": "IONIQ 6 Standard 53 kWh (151 Hp) BEV",
+       "manufacturerYear": 2023,
+       "alias": "Ioniq",
+       "color": "#9999ff",
+       "physicalId": "XXX-0000",
+       "type": "VEHICLE",
+       "energyMultiplicands": [
+        {
+         "multiplicandEnum": "DISTANCE",
+         "multiplicandValue": 0.0071900003
+        }
+       ],
+       "originalEnergyMultiplicands": [
+        {
+         "multiplicandEnum": "DISTANCE",
+         "multiplicandValue": 0.00719
+        }
+       ],
+       "firstTimeSession": 1690215196000,
+       "origin": "GLOBAL"
+      },
+      "latestSessionApplianceAlias": {
+       "VEHICLE": "Ioniq"
+      },
+      "isAuthorizationEnabled": false,
+      "ratedPower": 9600
+     }
+    ]
+   },
+   "gridProgram": null
+  },
+  "keba_charging": {
+   "@c": ".SiteDevicesResponse",
+   "status": "PASSED",
+   "httpStatus": 200,
+   "warningMessages": [],
+   "infoMessages": [],
+   "errorMessages": [],
+   "isUpdated": true,
+   "fieldLastUpdateTS": 1785027363901,
+   "updateRefreshRate": 3,
+   "globalCommunicationStatus": "ACTIVE",
+   "excessPvSupported": true,
+   "essentialDevicesSupported": true,
+   "rfIdCardsListSupported": "TRUE",
+   "billingProviders": [],
+   "devices": [
+    {
+     "communicationStatus": "ACTIVE",
+     "lastUpdated": 1785027363945,
+     "reporterId": 1257352290647958,
+     "serialNumber": "64041086",
+     "iconName": "BATTERY",
+     "name": "Wärme-Pumpe",
+     "manufacturer": "SolarEdge",
+     "model": "SEM-DCS-R08-00",
+     "macAddress": "0000000000000000",
+     "swVersion": "1.0.82",
+     "type": "ON_OFF",
+     "activationMode": "MANUAL",
+     "remoteOpInfo": null,
+     "deviceTriggers": [],
+     "isScenarioSupported": false,
+     "deviceStatus": "ACTIVE",
+     "status": {
+      "level": 100,
+      "activePowerMeter": null,
+      "activeTrigger": "MANUAL",
+      "startTime": 1783114849000,
+      "endTime": null,
+      "startTimeWithOffset": "2026-07-03T23:40:49+02:00",
+      "endTimeWithOffset": null,
+      "scheduleType": "NONE"
+     },
+     "config": {
+      "iconName": "BATTERY",
+      "deviceName": "Wärme-Pumpe",
+      "ratedPower": 1500.0,
+      "minOnTime": 10,
+      "maxOnTime": null,
+      "calculatedCommonPower": null
+     },
+     "excessPVConfiguration": {
+      "useExcessPV": true,
+      "excessPVActiveDays": [
+       "SUNDAY",
+       "MONDAY",
+       "TUESDAY",
+       "WEDNESDAY",
+       "THURSDAY",
+       "FRIDAY",
+       "SATURDAY"
+      ]
+     }
+    },
+    {
+     "communicationStatus": "ACTIVE",
+     "lastUpdated": 1785027363945,
+     "reporterId": 867949152714418,
+     "serialNumber": "6404e139",
+     "iconName": "HEAT_PUMP",
+     "name": "Entfeuchter",
+     "manufacturer": "SolarEdge",
+     "model": "SEM-SWT-R16-00",
+     "macAddress": "0000000000000000",
+     "swVersion": "1.0.82",
+     "type": "ON_OFF",
+     "activationMode": "AUTO",
+     "remoteOpInfo": null,
+     "deviceTriggers": [],
+     "isScenarioSupported": false,
+     "deviceStatus": "ACTIVE",
+     "status": {
+      "level": 0,
+      "activePowerMeter": null,
+      "activeTrigger": "SCHEDULED",
+      "startTime": null,
+      "endTime": null,
+      "startTimeWithOffset": null,
+      "endTimeWithOffset": null,
+      "scheduleType": "EXCESS_PV"
+     },
+     "config": {
+      "iconName": "HEAT_PUMP",
+      "deviceName": "Entfeuchter",
+      "ratedPower": 415.0,
+      "minOnTime": 5,
+      "maxOnTime": null,
+      "calculatedCommonPower": null
+     },
+     "excessPVConfiguration": {
+      "useExcessPV": true,
+      "excessPVActiveDays": [
+       "SUNDAY",
+       "MONDAY",
+       "TUESDAY",
+       "WEDNESDAY",
+       "THURSDAY",
+       "FRIDAY",
+       "SATURDAY"
+      ]
+     }
+    }
+   ],
+   "devicesByType": {
+    "EV_CHARGER": [
+     {
+      "communicationStatus": "ACTIVE",
+      "lastUpdated": 1785027363945,
+      "lastCommunicationTime": 1785027358708,
+      "features": {
+       "authorization": "true",
+       "stop-start": "true",
+       "schedules": "true",
+       "charging-history": "true",
+       "current-session-data": "true",
+       "connected-car": "true",
+       "solar-charging": "true"
+      },
+      "reporterId": 1147328470204095,
+      "serialNumber": "99203855",
+      "iconName": "AUTO",
+      "name": "EV Charger 99203855",
+      "manufacturer": "Keba AG",
+      "model": "ONE_EV_Pro",
+      "macAddress": null,
+      "swVersion": "04.00.44",
+      "type": "KEBA_CHARGER",
+      "activationMode": "AUTO",
+      "remoteOpInfo": null,
+      "deviceTriggers": [],
+      "isScenarioSupported": false,
+      "connectionStatus": "CHARGING",
+      "connectionSubStatus": "CHARGING",
+      "deviceStatus": "ACTIVE",
+      "actionOperationDetails": [
+       {
+        "actionOp": "OFF",
+        "actionText": "STOP_CHARGING",
+        "defaultOp": true
+       }
+      ],
+      "sessionStartTime": 1784985442574,
+      "firstSessionStartTime": 1763814311873,
+      "chargerStatus": "CHARGING",
+      "sessionActive": true,
+      "sessionDuration": 1376,
+      "sessionEnergy": 3502,
+      "billingSettings": null,
+      "currentSessionBillingAccount": null,
+      "sessionSolarUsage": "NONE",
+      "sessionDistance": 54.401047,
+      "activationState": "ACTIVE",
+      "chargerStatusSubTitle": [
+       {
+        "subStatusTitle": "CURRENT_POWER_WH",
+        "numericValue": 0.0
+       }
+      ],
+      "excessPV": -1,
+      "applianceData": {
+       "id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+       "siteApplianceUUID": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+       "manufacturer": "JAC",
+       "model": "E30X 51.5 kWh (136 Hp)",
+       "manufacturerYear": 2025,
+       "alias": "My JAC",
+       "color": "#9999ff",
+       "physicalId": "XXX-0000",
+       "type": "VEHICLE",
+       "energyMultiplicands": [
+        {
+         "multiplicandEnum": "DISTANCE",
+         "multiplicandValue": 0.01553428
+        }
+       ],
+       "originalEnergyMultiplicands": [
+        {
+         "multiplicandEnum": "DISTANCE",
+         "multiplicandValue": 0.0068
+        }
+       ],
+       "firstTimeSession": 1763814311873,
+       "origin": "GLOBAL"
+      },
+      "latestSessionApplianceAlias": {
+       "VEHICLE": "My JAC"
+      },
+      "isAuthorizationEnabled": false,
+      "ratedPower": 22080.0
+     }
+    ]
+   },
+   "gridProgram": null
+  }
+ }
+}

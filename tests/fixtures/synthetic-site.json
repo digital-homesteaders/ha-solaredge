@@ -1,0 +1,701 @@
+{
+ "synthetic": true,
+ "capturedAt": 1792062000000,
+ "site": {
+  "id": 9999999,
+  "status": "ACTIVE",
+  "name": "Synthetic site",
+  "peakPower": 8,
+  "timezone": "Europe/Amsterdam",
+  "installationDate": "2024-03-01T10:00:00Z"
+ },
+ "calls": [
+  {
+   "method": "getSitePowerflow",
+   "args": {
+    "siteId": 9999999
+   },
+   "result": {
+    "updateRefreshRate": 3,
+    "isRealTime": true,
+    "isCommunicating": true,
+    "unit": "kW",
+    "grid": {
+     "isActive": true,
+     "currentPower": 1.2,
+     "status": "export",
+     "hasPowerOutage": false
+    },
+    "consumption": {
+     "isActive": true,
+     "currentPower": 0.8,
+     "isConsuming": true
+    },
+    "solarProduction": {
+     "isActive": true,
+     "currentPower": 5.6,
+     "isProducing": true
+    },
+    "storage": {
+     "isActive": true,
+     "currentPower": 0.5,
+     "chargeLevel": 62,
+     "status": "charging",
+     "storagePlan": "MSC"
+    },
+    "evCharger": {
+     "isActive": true,
+     "connectionStatus": "charging",
+     "currentPower": 3.1,
+     "faultLabel": null,
+     "label": null
+    }
+   }
+  },
+  {
+   "method": "getSiteBatteries",
+   "args": {
+    "siteId": 9999999
+   },
+   "result": {
+    "status": "PASSED",
+    "devicesByType": {
+     "BATTERY": [
+      {
+       "batteryState": "CHARGING",
+       "chargeEnergy": 1234567,
+       "dischargeEnergy": 1000000,
+       "remainingEnergy": 6200,
+       "fullPackEnergy": 9200,
+       "namePlateEnergy": 9700,
+       "communicationStatus": "ACTIVE",
+       "info": {
+        "serialNumber": "BAT0001",
+        "model": "BAT-10K1P"
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "getSiteCommunication",
+   "args": {
+    "siteId": 9999999
+   },
+   "result": {
+    "connectivityStatus": "ONLINE",
+    "active": true
+   }
+  },
+  {
+   "method": "getSiteDevices",
+   "args": {
+    "siteId": 9999999
+   },
+   "result": {
+    "@c": ".SiteDevicesResponse",
+    "status": "PASSED",
+    "httpStatus": 200,
+    "warningMessages": [],
+    "infoMessages": [],
+    "errorMessages": [],
+    "isUpdated": true,
+    "fieldLastUpdateTS": 1768052703901,
+    "updateRefreshRate": 3,
+    "globalCommunicationStatus": "ACTIVE",
+    "excessPvSupported": true,
+    "essentialDevicesSupported": false,
+    "rfIdCardsListSupported": "XXXXXXXXXXX",
+    "billingProviders": [],
+    "devices": [
+     {
+      "reporterId": 102,
+      "serialNumber": "HLC0001",
+      "name": "Boiler",
+      "type": "ON_OFF",
+      "activationMode": "MANUAL",
+      "status": {
+       "level": 100,
+       "activePowerMeter": null
+      },
+      "config": {
+       "ratedPower": 2000
+      },
+      "deviceStatus": "ACTIVE"
+     }
+    ],
+    "devicesByType": {
+     "EV_CHARGER": [
+      {
+       "communicationStatus": "ACTIVE",
+       "lastUpdated": 1768052703941,
+       "lastCommunicationTime": 1768052702163,
+       "features": {
+        "authorization": "false",
+        "charging-history": "true",
+        "connected-car": "true",
+        "current-session-data": "true",
+        "schedules": "true",
+        "solar-charging": "true",
+        "stop-start": "true"
+       },
+       "reporterId": 1000001479067354,
+       "serialNumber": "05F60667",
+       "iconName": "AUTO",
+       "name": "EV Charger with Boost",
+       "manufacturer": "Solaredge",
+       "model": "EV Charger",
+       "macAddress": null,
+       "swVersion": "2.2.10",
+       "type": "EV_CHARGER_SA",
+       "activationMode": "MANUAL",
+       "remoteOpInfo": null,
+       "deviceTriggers": [
+        {
+         "enable": false,
+         "scheduledDays": [
+          "SUNDAY",
+          "MONDAY",
+          "TUESDAY",
+          "WEDNESDAY",
+          "THURSDAY",
+          "FRIDAY",
+          "SATURDAY"
+         ],
+         "startTime": 600,
+         "endTime": 720,
+         "smartSaver": false,
+         "triggerId": 1000003486326916
+        }
+       ],
+       "isScenarioSupported": false,
+       "connectionStatus": "CHARGING",
+       "connectionSubStatus": "CHARGING",
+       "deviceStatus": "ACTIVE",
+       "actionOperationDetails": [
+        {
+         "actionOp": "OFF",
+         "actionText": "STOP_CHARGING",
+         "defaultOp": true
+        }
+       ],
+       "sessionStartTime": 1768052656000,
+       "firstSessionStartTime": 1690210944000,
+       "chargerStatus": "CHARGING",
+       "sessionActive": true,
+       "sessionDuration": 38,
+       "sessionEnergy": 93,
+       "billingSettings": null,
+       "currentSessionBillingAccount": null,
+       "sessionSolarUsage": "NONE",
+       "sessionDistance": 0.66867,
+       "activationState": "ACTIVE",
+       "chargerStatusSubTitle": [
+        {
+         "subStatusTitle": "CURRENT_POWER_WH",
+         "numericValue": 9508.838
+        }
+       ],
+       "excessPV": -2,
+       "applianceData": {
+        "id": "XXXXXXXXXXXXXXXXXXXX",
+        "siteApplianceUUID": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+        "manufacturer": "Hyundai",
+        "model": "IONIQ 6 Standard 53 kWh (151 Hp) BEV",
+        "manufacturerYear": 2023,
+        "alias": "Ioniq",
+        "color": "#9999ff",
+        "physicalId": "XXX-0000",
+        "type": "VEHICLE",
+        "energyMultiplicands": [
+         {
+          "multiplicandEnum": "DISTANCE",
+          "multiplicandValue": 0.0071900003
+         }
+        ],
+        "originalEnergyMultiplicands": [
+         {
+          "multiplicandEnum": "DISTANCE",
+          "multiplicandValue": 0.00719
+         }
+        ],
+        "firstTimeSession": 1690215196000,
+        "origin": "GLOBAL"
+       },
+       "latestSessionApplianceAlias": {
+        "VEHICLE": "Ioniq"
+       },
+       "isAuthorizationEnabled": false,
+       "ratedPower": 9600
+      }
+     ]
+    },
+    "gridProgram": null
+   }
+  },
+  {
+   "method": "getSiteDeviceApplianceSessionsHistory",
+   "args": {
+    "siteId": 9999999,
+    "reporterId": 1000001479067354
+   },
+   "result": {
+    "applianceDetails": [
+     {
+      "statistics": [
+       {
+        "subjectEnum": "CONSUMED_ENERGY",
+        "totalValue": 123456
+       }
+      ]
+     },
+     {
+      "statistics": [
+       {
+        "subjectEnum": "CONSUMED_ENERGY",
+        "totalValue": 4000
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "method": "getSiteEnergyOverview",
+   "args": {
+    "siteId": 9999999
+   },
+   "result": {
+    "energyProducedOverviewList": [
+     {
+      "timePeriod": "LIFE_TIME",
+      "energy": 29338528,
+      "revenue": null
+     },
+     {
+      "timePeriod": "LAST_YEAR",
+      "energy": 4345507,
+      "revenue": null
+     },
+     {
+      "timePeriod": "LAST_MONTH",
+      "energy": 176703,
+      "revenue": null
+     },
+     {
+      "timePeriod": "LAST_DAY",
+      "energy": 7131,
+      "revenue": null
+     }
+    ]
+   }
+  },
+  {
+   "method": "getSiteEquipment",
+   "args": {
+    "siteId": 9999999
+   },
+   "result": {
+    "inverters": {
+     "totalCount": 1,
+     "details": [
+      {
+       "modelName": "SE5K",
+       "serialNumbers": [
+        "7E000000-00"
+       ]
+      }
+     ]
+    },
+    "optimizers": {
+     "totalCount": 16,
+     "details": [
+      {
+       "modelName": "P370",
+       "totalCount": 16
+      }
+     ]
+    },
+    "storage": null,
+    "smartHome": null,
+    "meters": null,
+    "gateways": null,
+    "buis": null,
+    "meterCollars": null,
+    "commercialBackupInterfaces": null,
+    "evChargers": null,
+    "localControllers": null,
+    "cssOds": null,
+    "cssOd": null
+   }
+  },
+  {
+   "method": "getInvertersInformation",
+   "args": {
+    "serials": [
+     "7E000000-00"
+    ]
+   },
+   "result": {
+    "basicInformationList": [
+     {
+      "type_": "apiInverterBasicInformation",
+      "serial": "7E000000-00",
+      "manufacturer": "SolarEdge",
+      "fullModel": "SE5K-RW0TEBNN4",
+      "communication": "ETHERNET",
+      "communicationRole": "LEADER",
+      "dsp1Version": "1.13.2306",
+      "dsp2Version": "2.19.1900",
+      "cpuVersion": "4.21.23",
+      "countryName": "Netherlands",
+      "countryCode": 19
+     }
+    ],
+    "serialToLiveData": {
+     "7E000000-00": {
+      "type_": "apiInverterLiveData",
+      "lastMeasurement": "2026-10-15T11:50:28Z",
+      "inverterStatus": "production",
+      "acEnergyOffGrid_Wh": 0,
+      "acEnergyOnGrid_Wh": 203,
+      "iRcd_A": 0.0041874996,
+      "lastIsolationValue_KOhm": 7629.17,
+      "pAc_W": 1040,
+      "powerLimit_percent": 100,
+      "vDc_V": 747.625,
+      "vL1L2_V": 405.25,
+      "vL2L3_V": 404.375,
+      "vL3L1_V": 404.625
+     }
+    },
+    "serialToPhaseMeasurements": {
+     "7E000000-00": [
+      {
+       "activePower_W": 348,
+       "apparentPower_VA": 353,
+       "cosPhi_Reference": 1,
+       "i_ac_A": 1.5078125,
+       "i_ac_dc_A": -0.0017089844,
+       "reactivePower_VAr": -59,
+       "v_ac_V": 234.79688,
+       "lineNumber_3ph": 1
+      },
+      {
+       "activePower_W": 349,
+       "apparentPower_VA": 350,
+       "cosPhi_Reference": 1,
+       "i_ac_A": 1.53125,
+       "i_ac_dc_A": -0.0034179688,
+       "reactivePower_VAr": -79,
+       "v_ac_V": 232.25,
+       "lineNumber_3ph": 2
+      },
+      {
+       "activePower_W": 343,
+       "apparentPower_VA": 358,
+       "cosPhi_Reference": 1,
+       "i_ac_A": 1.5,
+       "i_ac_dc_A": -0.01928711,
+       "reactivePower_VAr": -69,
+       "v_ac_V": 234.20312,
+       "lineNumber_3ph": 3
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "getSites",
+   "result": {
+    "9999999": {
+     "id": 9999999,
+     "status": "ACTIVE",
+     "name": "Synthetic site",
+     "peakPower": 8,
+     "timezone": "Europe/Amsterdam",
+     "installationDate": "2024-03-01T10:00:00Z"
+    }
+   }
+  },
+  {
+   "method": "getSiteEnergyByInverter",
+   "args": {
+    "siteId": 9999999,
+    "startDate": "2026-10-15",
+    "endDate": "2026-10-15",
+    "inverterSerials": [
+     "7E000000-00"
+    ],
+    "includeMaxTemperature": true
+   },
+   "result": {
+    "siteId": 1665942,
+    "startDate": "2026-10-15",
+    "endDate": "2026-10-15",
+    "inverters": [
+     {
+      "serial": "7E000000-00",
+      "energy": {
+       "value": 7131,
+       "unit": "watt-hour"
+      },
+      "strings": [
+       {
+        "energy": {
+         "value": 6883.75,
+         "unit": "watt-hour"
+        },
+        "stringRelativeOrder": 0
+       }
+      ],
+      "optimizers": [
+       {
+        "serial": "12000008-08",
+        "energy": {
+         "value": 423.25,
+         "unit": "watt-hour"
+        },
+        "temperature": {
+         "temperature": 34,
+         "temperatureUnit": "CELSIUS"
+        },
+        "color": 0.8957671957671959
+       },
+       {
+        "serial": "12000007-07",
+        "energy": {
+         "value": 472.5,
+         "unit": "watt-hour"
+        },
+        "temperature": {
+         "temperature": 38,
+         "temperatureUnit": "CELSIUS"
+        },
+        "color": 1
+       },
+       {
+        "serial": "12000000-00",
+        "energy": {
+         "value": 458,
+         "unit": "watt-hour"
+        },
+        "temperature": {
+         "temperature": 36,
+         "temperatureUnit": "CELSIUS"
+        },
+        "color": 0.9693121693121693
+       },
+       {
+        "serial": "12000003-03",
+        "energy": {
+         "value": 382.25,
+         "unit": "watt-hour"
+        },
+        "temperature": {
+         "temperature": 32,
+         "temperatureUnit": "CELSIUS"
+        },
+        "color": 0.808994708994709
+       },
+       {
+        "serial": "12000001-01",
+        "energy": {
+         "value": 420.75,
+         "unit": "watt-hour"
+        },
+        "temperature": {
+         "temperature": 36,
+         "temperatureUnit": "CELSIUS"
+        },
+        "color": 0.8904761904761905
+       },
+       {
+        "serial": "1200000F-0F",
+        "energy": {
+         "value": 450.5,
+         "unit": "watt-hour"
+        },
+        "temperature": {
+         "temperature": 34,
+         "temperatureUnit": "CELSIUS"
+        },
+        "color": 0.9534391534391534
+       },
+       {
+        "serial": "1200000E-0E",
+        "energy": {
+         "value": 444.25,
+         "unit": "watt-hour"
+        },
+        "temperature": {
+         "temperature": 32,
+         "temperatureUnit": "CELSIUS"
+        },
+        "color": 0.9402116402116403
+       },
+       {
+        "serial": "1200000B-0B",
+        "energy": {
+         "value": 450.25,
+         "unit": "watt-hour"
+        },
+        "temperature": {
+         "temperature": 34,
+         "temperatureUnit": "CELSIUS"
+        },
+        "color": 0.9529100529100529
+       },
+       {
+        "serial": "12000004-04",
+        "energy": {
+         "value": 446,
+         "unit": "watt-hour"
+        },
+        "temperature": {
+         "temperature": 36,
+         "temperatureUnit": "CELSIUS"
+        },
+        "color": 0.9439153439153439
+       },
+       {
+        "serial": "1200000A-0A",
+        "energy": {
+         "value": 462,
+         "unit": "watt-hour"
+        },
+        "temperature": {
+         "temperature": 34,
+         "temperatureUnit": "CELSIUS"
+        },
+        "color": 0.9777777777777779
+       },
+       {
+        "serial": "12000002-02",
+        "energy": {
+         "value": 451.75,
+         "unit": "watt-hour"
+        },
+        "temperature": {
+         "temperature": 38,
+         "temperatureUnit": "CELSIUS"
+        },
+        "color": 0.9560846560846561
+       },
+       {
+        "serial": "12000005-05",
+        "energy": {
+         "value": 469,
+         "unit": "watt-hour"
+        },
+        "temperature": {
+         "temperature": 36,
+         "temperatureUnit": "CELSIUS"
+        },
+        "color": 0.9925925925925927
+       },
+       {
+        "serial": "12000009-09",
+        "energy": {
+         "value": 448.75,
+         "unit": "watt-hour"
+        },
+        "temperature": {
+         "temperature": 34,
+         "temperatureUnit": "CELSIUS"
+        },
+        "color": 0.9497354497354498
+       },
+       {
+        "serial": "12000006-06",
+        "energy": {
+         "value": 425.5,
+         "unit": "watt-hour"
+        },
+        "temperature": {
+         "temperature": 36,
+         "temperatureUnit": "CELSIUS"
+        },
+        "color": 0.9005291005291005
+       },
+       {
+        "serial": "1200000D-0D",
+        "energy": {
+         "value": 410,
+         "unit": "watt-hour"
+        },
+        "temperature": {
+         "temperature": 34,
+         "temperatureUnit": "CELSIUS"
+        },
+        "color": 0.8677248677248677
+       },
+       {
+        "serial": "1200000C-0C",
+        "energy": {
+         "value": 269,
+         "unit": "watt-hour"
+        },
+        "temperature": {
+         "temperature": 30,
+         "temperatureUnit": "CELSIUS"
+        },
+        "color": 0.5693121693121693
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "method": "getSiteAlerts",
+   "args": {
+    "siteId": 9999999
+   },
+   "result": {
+    "totalAlertsCount": 1,
+    "topAlerts": []
+   }
+  },
+  {
+   "method": "getSiteMeasurements",
+   "args": {
+    "siteId": 9999999,
+    "endDate": "2025-12-31"
+   },
+   "result": {
+    "summary": {
+     "import": 1800000,
+     "export": 3100000
+    }
+   }
+  },
+  {
+   "method": "getSiteMeasurements",
+   "args": {
+    "siteId": 9999999,
+    "endDate": "2024-12-31"
+   },
+   "result": {
+    "summary": {
+     "import": 1200000,
+     "export": 2500000
+    }
+   }
+  },
+  {
+   "method": "getSiteMeasurements",
+   "args": {
+    "siteId": 9999999,
+    "endDate": "2026-12-31"
+   },
+   "result": {
+    "summary": {
+     "import": 1400000,
+     "export": 2700000
+    }
+   }
+  }
+ ]
+}

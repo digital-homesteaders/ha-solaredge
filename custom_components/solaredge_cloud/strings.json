@@ -1,0 +1,179 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "mySolarEdge account",
+        "description": "Log in with the e-mail address and password of the mySolarEdge app. No API key is needed.",
+        "data": {
+          "username": "E-mail address",
+          "password": "Password"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Log in again",
+        "description": "SolarEdge rejected the password for {title}. Enter the current mySolarEdge password.",
+        "data": {
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "SolarEdge rejected the e-mail address or password.",
+      "cannot_connect": "Could not reach SolarEdge. Try again later.",
+      "unknown": "Unexpected error."
+    },
+    "abort": {
+      "already_configured": "This mySolarEdge account is already set up.",
+      "no_sites": "This mySolarEdge account has no sites.",
+      "reauth_successful": "Logged in again."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Polling",
+        "description": "How often to read the live power flow. Energy totals, inverter details and charging history are read every 5 minutes or less often, whatever this is set to.",
+        "data": {
+          "poll_interval": "Live power poll interval"
+        },
+        "data_description": {
+          "poll_interval": "Seconds, 30 to 300. Default 60."
+        }
+      }
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "solar_charging": {
+        "name": "Solar surplus charging"
+      }
+    },
+    "button": {
+      "set_automatic": {
+        "name": "Automatic mode"
+      }
+    },
+    "select": {
+      "load_controller_mode": {
+        "name": "Mode",
+        "state": {
+          "on": "On",
+          "off": "Off",
+          "auto": "Automatic"
+        }
+      }
+    },
+    "sensor": {
+      "alerts": {
+        "name": "Open alerts"
+      },
+      "energy_lifetime": {
+        "name": "Lifetime production"
+      },
+      "energy_today": {
+        "name": "Production today"
+      },
+      "energy_month": {
+        "name": "Production this month"
+      },
+      "energy_year": {
+        "name": "Production this year"
+      },
+      "voltage_l1": {
+        "name": "Voltage L1"
+      },
+      "voltage_l2": {
+        "name": "Voltage L2"
+      },
+      "voltage_l3": {
+        "name": "Voltage L3"
+      },
+      "inverter_status": {
+        "name": "Status",
+        "state": {
+          "production": "Producing",
+          "sleeping": "Sleeping",
+          "starting": "Starting",
+          "throttled": "Throttled",
+          "shutting_down": "Shutting down",
+          "fault": "Fault",
+          "standby": "Standby",
+          "off": "Off"
+        }
+      },
+      "optimizer_temperature_max": {
+        "name": "Hottest optimizer today"
+      },
+      "grid_power": {
+        "name": "Grid power"
+      },
+      "load_power": {
+        "name": "Consumption"
+      },
+      "solar_power": {
+        "name": "Solar power"
+      },
+      "energy_imported": {
+        "name": "Imported"
+      },
+      "energy_exported": {
+        "name": "Exported"
+      },
+      "energy_imported_year": {
+        "name": "Imported this year"
+      },
+      "energy_exported_year": {
+        "name": "Exported this year"
+      },
+      "battery_state": {
+        "name": "State",
+        "state": {
+          "charging": "Charging",
+          "discharging": "Discharging",
+          "idle": "Idle"
+        }
+      },
+      "energy_charged": {
+        "name": "Charged"
+      },
+      "energy_discharged": {
+        "name": "Discharged"
+      },
+      "residual_energy": {
+        "name": "Stored energy"
+      },
+      "state_of_health": {
+        "name": "State of health"
+      },
+      "ev_charging_state": {
+        "name": "Charging state",
+        "state": {
+          "plugged_in": "Plugged in",
+          "plugged_in_charging": "Charging",
+          "plugged_out": "Unplugged"
+        }
+      },
+      "session_energy": {
+        "name": "Session energy"
+      },
+      "session_duration": {
+        "name": "Session duration"
+      },
+      "charge_mode": {
+        "name": "Charge mode",
+        "state": {
+          "auto": "Automatic",
+          "manual": "Manual"
+        }
+      },
+      "vehicle": {
+        "name": "Vehicle"
+      }
+    },
+    "switch": {
+      "charging": {
+        "name": "Charging"
+      }
+    }
+  }
+}

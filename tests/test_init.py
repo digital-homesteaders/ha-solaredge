@@ -1,0 +1,346 @@
+"""Setup, polling, backoff, night behaviour and diagnostics against the replay client."""
+
+from __future__ import annotations
+
+from datetime import timedelta
+from typing import Any
+from unittest.mock import patch
+
+import pytest
+from freezegun.api import FrozenDateTimeFactory
+from homeassistant.config_entries import ConfigEntryState
+from homeassistant.const import STATE_UNAVAILABLE
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
+from pytest_homeassistant_custom_component.common import MockConfigEntry, async_fire_time_changed
+
+from custom_components.solaredge_cloud.api import (
+    SolarEdgeApiError,
+    SolarEdgeAuthError,
+    SolarEdgeConnectionError,
+    SolarEdgeRateLimitError,
+)
+from custom_components.solaredge_cloud.const import BACKOFF_MAX, CONF_POLL_INTERVAL, DOMAIN
+from custom_components.solaredge_cloud.diagnostics import async_get_config_entry_diagnostics
+
+from .conftest import CAPTURED_AT, PASSWORD, USERNAME, ReplayClient
+
+SITE = "9999999"
+EV = "1000001479067354"
+
+
+@pytest.fixture(autouse=True)
+def frozen(freezer: FrozenDateTimeFactory) -> FrozenDateTimeFactory:
+    """Time stands at the capture."""
+    freezer.move_to(CAPTURED_AT)
+    return freezer
+
+
+@pytest.fixture(autouse=True)
+def no_year_pause():
+    """No pause between yearly requests."""
+    with patch("custom_components.solaredge_cloud.meter_totals.YEAR_FETCH_DELAY", 0):
+        yield
+
+
+async def setup(hass: HomeAssistant, entry_data: dict[str, str], options: dict[str, Any] | None = None) -> MockConfigEntry:
+    entry = MockConfigEntry(domain=DOMAIN, unique_id=USERNAME, title="Synthetic site", data=entry_data, options=options or {})
+    entry.add_to_hass(hass)
+    await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done(wait_background_tasks=True)
+    return entry
+
+
+def entity_id(hass: HomeAssistant, platform: str, unique_id: str) -> str:
+    found = er.async_get(hass).async_get_entity_id(platform, DOMAIN, unique_id)
+    assert found, unique_id
+    return found
+
+
+def state(hass: HomeAssistant, platform: str, unique_id: str) -> str:
+    return hass.states.get(entity_id(hass, platform, unique_id)).state
+
+
+async def advance(hass: HomeAssistant, frozen: FrozenDateTimeFactory, seconds: float, step: float = 10) -> None:
+    """Let time pass in small steps, firing the timers due at each."""
+    while seconds > 0:
+        frozen.tick(timedelta(seconds=min(step, seconds)))
+        seconds -= step
+        async_fire_time_changed(hass)
+        await hass.async_block_till_done(wait_background_tasks=True)
+
+
+# Setup is at 11:00:00; the energy ticks follow the inverter's uploads at :28
+# past each 5 minutes, 20 s later: 11:00:48, 11:05:48, ... A refresh resets the
+# 60 s poll timer, so the plain polls after setup are at 11:01:48, 11:02:48, ...
+
+
+async def test_setup_creates_devices_and_values(hass: HomeAssistant, replay: ReplayClient, entry_data) -> None:
+    entry = await setup(hass, entry_data)
+    assert entry.state is ConfigEntryState.LOADED
+
+    devices = dr.async_get(hass)
+    site = devices.async_get_device_by_identifier((DOMAIN, SITE), entry.entry_id)
+    assert site and site.name == "Synthetic site"
+    for ident in (f"{SITE}_inverter", f"{SITE}_meter", f"{SITE}_battery", f"{SITE}_ev_{EV}", f"{SITE}_hlc_102"):
+        device = devices.async_get_device_by_identifier((DOMAIN, ident), entry.entry_id)
+        assert device, ident
+        assert device.via_device_id == site.id
+
+    # The synthetic site's expected values (gruijter test/responses.js).
+    expected = {
+        ("sensor", f"{SITE}_inverter_power"): "5600",
+        ("sensor", f"{SITE}_inverter_energy_lifetime"): "29338.528",
+        ("sensor", f"{SITE}_inverter_energy_today"): "7.131",
+        ("sensor", f"{SITE}_inverter_status"): "production",
+        ("sensor", f"{SITE}_inverter_optimizer_temperature_max"): "38",
+        ("sensor", f"{SITE}_meter_grid_power"): "-1200",
+        ("sensor", f"{SITE}_meter_load_power"): "800",
+        ("sensor", f"{SITE}_meter_solar_power"): "5600",
+        ("sensor", f"{SITE}_meter_energy_imported"): "4400.0",
+        ("sensor", f"{SITE}_meter_energy_exported"): "8300.0",
+        ("sensor", f"{SITE}_battery_power"): "500",
+        ("sensor", f"{SITE}_battery_soc"): "62",
+        ("sensor", f"{SITE}_battery_state"): "charging",
+        ("sensor", f"{SITE}_battery_energy_charged"): "1234.567",
+        ("sensor", f"{SITE}_battery_energy_discharged"): "1000.0",
+        ("sensor", f"{SITE}_battery_residual_energy"): "6.2",
+        ("sensor", f"{SITE}_battery_state_of_health"): "95",
+        ("sensor", f"{SITE}_ev_{EV}_power"): "9509",
+        ("sensor", f"{SITE}_ev_{EV}_charging_state"): "plugged_in_charging",
+        ("sensor", f"{SITE}_ev_{EV}_energy_charged"): "127.456",
+        ("sensor", f"{SITE}_ev_{EV}_session_energy"): "0.093",
+        ("sensor", f"{SITE}_ev_{EV}_charge_mode"): "manual",
+        ("sensor", f"{SITE}_ev_{EV}_vehicle"): "Ioniq",
+        ("switch", f"{SITE}_ev_{EV}_charging"): "on",
+        ("binary_sensor", f"{SITE}_ev_{EV}_solar_charging"): "off",
+        ("select", f"{SITE}_hlc_102_state"): "on",
+        ("sensor", f"{SITE}_hlc_102_power"): "2000",
+        ("binary_sensor", f"{SITE}_site_connectivity"): "on",
+        ("binary_sensor", f"{SITE}_site_problem"): "on",
+    }
+    got = {key: state(hass, *key) for key in expected}
+    assert got == expected
+
+    # Energy dashboard: lifetime counters are total_increasing energy in kWh.
+    attrs = hass.states.get(entity_id(hass, "sensor", f"{SITE}_meter_energy_imported")).attributes
+    assert attrs["state_class"] == "total_increasing" and attrs["device_class"] == "energy"
+    assert attrs["unit_of_measurement"] == "kWh"
+    attrs = hass.states.get(entity_id(hass, "sensor", f"{SITE}_inverter_power")).attributes
+    assert attrs["state_class"] == "measurement" and attrs["device_class"] == "power"
+    # No always-zero EV "discharged".
+    assert not er.async_get(hass).async_get_entity_id("sensor", DOMAIN, f"{SITE}_ev_{EV}_energy_discharged")
+
+
+async def test_requests_per_tick(hass: HomeAssistant, replay: ReplayClient, frozen, entry_data) -> None:
+    entry = await setup(hass, entry_data)
+    assert entry.runtime_data.timing.phase_ms == 48_000
+    await advance(hass, frozen, 50)
+    replay.calls.clear()
+    await advance(hass, frozen, 60)
+    # A plain poll: one powerflow for all five devices, plus one devices list for
+    # the EV charger and the load controller.
+    assert sorted(name for name, _ in replay.calls) == ["getSiteDevices", "getSitePowerflow"]
+
+    # Ten minutes: two energy ticks and about one powerflow a minute.
+    replay.calls.clear()
+    await advance(hass, frozen, 600)
+    assert replay.count("getSiteEnergyOverview") == 2
+    assert replay.count("getInvertersInformation") == 2
+    assert replay.count("getSiteBatteries") == 2
+    assert 10 <= replay.count("getSitePowerflow") <= 11
+    # The current year's meter totals on each energy tick; past years from the cache.
+    assert [args[1] for name, args in replay.calls if name == "getSiteMeasurements"] == ["2026-12-31"] * 2
+    # The slow readings go with every third energy tick: setup (1st), then the
+    # 4th at 11:10:48.
+    assert replay.count("getSiteDeviceApplianceSessionsHistory") == 1
+    assert replay.count("getSiteAlerts") == 1
+    assert replay.count("getSiteEnergyByInverter") == 1
+    await advance(hass, frozen, 300)
+    assert replay.count("getSiteDeviceApplianceSessionsHistory") == 1
+
+
+async def test_default_and_custom_poll_interval(hass: HomeAssistant, replay: ReplayClient, entry_data) -> None:
+    entry = await setup(hass, entry_data)
+    assert entry.runtime_data.update_interval == timedelta(seconds=60)
+    hass.config_entries.async_update_entry(entry, options={CONF_POLL_INTERVAL: 120})
+    await hass.async_block_till_done()
+    assert entry.runtime_data.update_interval == timedelta(seconds=120)
+
+
+async def test_inverter_stays_available_at_night(hass: HomeAssistant, replay: ReplayClient, frozen, entry_data) -> None:
+    await setup(hass, entry_data)
+    replay.answers["getSitePowerflow"] = {
+        "grid": {"isActive": True, "currentPower": 0.3, "status": "import"},
+        "consumption": {"isActive": True, "currentPower": 0.3},
+        "solarProduction": {"isActive": False, "currentPower": None, "isProducing": False},
+        "storage": {"isActive": False, "currentPower": None, "chargeLevel": 15, "status": "idle"},
+    }
+    information = replay.results["getInvertersInformation"][0]["result"]
+    live = next(iter(information["serialToLiveData"].values()))
+    live["pAc_W"] = 0
+    live["lastMeasurement"] = "2026-10-15T10:40:28Z"
+    replay.answers["getSiteCommunication"] = {"connectivityStatus": "OFFLINE"}
+    await advance(hass, frozen, 120)
+    assert state(hass, "sensor", f"{SITE}_inverter_power") == "0"
+    assert state(hass, "sensor", f"{SITE}_meter_solar_power") == "0"
+    assert state(hass, "sensor", f"{SITE}_battery_power") == "0"
+    assert state(hass, "sensor", f"{SITE}_battery_soc") == "15"
+    # The inverter sleeps: status says so, and the site is not reported offline.
+    await advance(hass, frozen, 600)
+    assert state(hass, "sensor", f"{SITE}_inverter_status") == "sleeping"
+    assert state(hass, "binary_sensor", f"{SITE}_site_connectivity") == "on"
+    assert state(hass, "sensor", f"{SITE}_inverter_power") == "0"
+
+
+async def test_inverter_only_site_rests_at_night(hass: HomeAssistant, replay: ReplayClient, frozen, entry_data) -> None:
+    replay.answers["getSitePowerflow"] = {"solarProduction": {"isActive": False, "currentPower": None}, "grid": {"isActive": False}}
+    replay.answers["getSiteDevices"] = {"devices": []}
+    await setup(hass, entry_data)
+    await advance(hass, frozen, 50)
+    replay.calls.clear()
+    # Plain polls skip the powerflow; the energy tick still reads it.
+    await advance(hass, frozen, 240)
+    assert replay.count("getSitePowerflow") == 0
+    await advance(hass, frozen, 60)
+    assert replay.count("getSitePowerflow") == 1
+    assert state(hass, "sensor", f"{SITE}_inverter_power") == "0"
+
+
+async def test_backoff_after_outage(hass: HomeAssistant, replay: ReplayClient, frozen, entry_data) -> None:
+    entry = await setup(hass, entry_data)
+    coordinator = entry.runtime_data
+    power = entity_id(hass, "sensor", f"{SITE}_inverter_power")
+    replay.fail["getSitePowerflow"] = SolarEdgeConnectionError("down")
+    replay.fail["getSiteDevices"] = SolarEdgeConnectionError("down")
+
+    await advance(hass, frozen, 50)  # the energy tick at :48 fails
+    assert coordinator.update_interval == timedelta(seconds=120)
+    # One failed poll: still available, last value kept.
+    assert hass.states.get(power).state == "5600"
+
+    replay.calls.clear()
+    await advance(hass, frozen, 100)
+    # Backing off: no request until 120 s after the failure.
+    assert replay.calls == []
+    await advance(hass, frozen, 20)
+    assert replay.count("getSitePowerflow") == 1
+    assert coordinator.update_interval == timedelta(seconds=240)
+    assert hass.states.get(power).state == "5600"
+
+    replay.calls.clear()
+    await advance(hass, frozen, 240)
+    # Third failure in a row: now unavailable. The energy tick in between was
+    # skipped, not sent.
+    assert replay.count("getSitePowerflow") == 1
+    assert coordinator.consecutive_failures == 3
+    assert hass.states.get(power).state == STATE_UNAVAILABLE
+    assert coordinator.update_interval == timedelta(seconds=480)
+
+    await advance(hass, frozen, 480 + 960 + BACKOFF_MAX, step=60)
+    assert coordinator.update_interval == timedelta(seconds=BACKOFF_MAX)
+
+    replay.fail.clear()
+    await advance(hass, frozen, BACKOFF_MAX, step=60)
+    assert coordinator.update_interval == timedelta(seconds=60)
+    assert coordinator.consecutive_failures == 0
+    assert hass.states.get(power).state == "5600"
+
+
+async def test_backoff_on_rate_limit_even_if_part_succeeds(hass: HomeAssistant, replay: ReplayClient, frozen, entry_data) -> None:
+    entry = await setup(hass, entry_data)
+    replay.fail["getSiteDevices"] = SolarEdgeRateLimitError("429", status=429)
+    await advance(hass, frozen, 50)
+    assert entry.runtime_data.update_interval == timedelta(seconds=120)
+
+
+async def test_partial_failure_is_not_an_outage(hass: HomeAssistant, replay: ReplayClient, frozen, entry_data) -> None:
+    entry = await setup(hass, entry_data)
+    replay.fail["getSiteDevices"] = SolarEdgeApiError("x", status=404)
+    await advance(hass, frozen, 120)
+    assert entry.runtime_data.update_interval == timedelta(seconds=60)
+    assert entry.runtime_data.consecutive_failures == 0
+
+
+async def test_rejected_login_starts_reauth(hass: HomeAssistant, replay: ReplayClient, frozen, entry_data) -> None:
+    entry = await setup(hass, entry_data)
+    replay.fail["getSitePowerflow"] = SolarEdgeAuthError("rejected")
+    replay.fail["getSiteDevices"] = SolarEdgeAuthError("rejected")
+    await advance(hass, frozen, 50)
+    flows = hass.config_entries.flow.async_progress_by_handler(DOMAIN)
+    assert [flow["context"]["source"] for flow in flows] == ["reauth"]
+    # No more polls or energy ticks: no retries with the rejected password.
+    replay.calls.clear()
+    await advance(hass, frozen, 900, step=30)
+    assert replay.calls == []
+    assert entry.state is ConfigEntryState.LOADED
+
+
+async def test_rejected_login_at_setup(hass: HomeAssistant, replay: ReplayClient, entry_data) -> None:
+    replay.fail["getSites"] = SolarEdgeAuthError("rejected")
+    entry = await setup(hass, entry_data)
+    assert entry.state is ConfigEntryState.SETUP_ERROR
+    assert [f["context"]["source"] for f in hass.config_entries.flow.async_progress_by_handler(DOMAIN)] == ["reauth"]
+
+
+async def test_outage_at_setup_retries(hass: HomeAssistant, replay: ReplayClient, entry_data) -> None:
+    replay.fail["getSites"] = SolarEdgeConnectionError("down")
+    entry = await setup(hass, entry_data)
+    assert entry.state is ConfigEntryState.SETUP_RETRY
+
+
+async def test_commands(hass: HomeAssistant, replay: ReplayClient, entry_data) -> None:
+    await setup(hass, entry_data)
+    await hass.services.async_call(
+        "switch", "turn_off", {"entity_id": entity_id(hass, "switch", f"{SITE}_ev_{EV}_charging")}, blocking=True
+    )
+    await hass.services.async_call(
+        "button", "press", {"entity_id": entity_id(hass, "button", f"{SITE}_ev_{EV}_set_automatic")}, blocking=True
+    )
+    await hass.services.async_call(
+        "select", "select_option",
+        {"entity_id": entity_id(hass, "select", f"{SITE}_hlc_102_state"), "option": "auto"}, blocking=True,
+    )
+    sent = [args for name, args in replay.calls if name == "setActivationState"]
+    assert sent == [
+        (SITE, EV, {"mode": "MANUAL", "level": 0, "duration": None}),
+        (SITE, EV, {"mode": "AUTO"}),
+        (SITE, "102", {"mode": "AUTO", "level": None, "duration": None}),
+    ]
+
+
+async def test_meter_totals_survive_restart_from_cache(hass: HomeAssistant, replay: ReplayClient, entry_data) -> None:
+    entry = await setup(hass, entry_data)
+    asked = [args[1] for name, args in replay.calls if name == "getSiteMeasurements"]
+    assert sorted(asked) == ["2024-12-31", "2025-12-31", "2026-12-31"]
+    await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done(wait_background_tasks=True)
+    asked = [args[1] for name, args in replay.calls if name == "getSiteMeasurements"]
+    # Past years from the store; only the current year again.
+    assert sorted(asked) == ["2024-12-31", "2025-12-31", "2026-12-31", "2026-12-31"]
+    assert state(hass, "sensor", f"{SITE}_meter_energy_imported") == "4400.0"
+
+
+async def test_diagnostics_redact_credentials(hass: HomeAssistant, replay: ReplayClient, entry_data) -> None:
+    entry = await setup(hass, entry_data)
+    diagnostics = await async_get_config_entry_diagnostics(hass, entry)
+    text = str(diagnostics)
+    assert USERNAME not in text and PASSWORD not in text
+    assert diagnostics["entry"]["data"] == {"username": "**REDACTED**", "password": "**REDACTED**"}
+    assert "7E000000-00" not in text
+    assert diagnostics["coordinator"]["poll_interval"] == 60
+
+
+async def test_credentials_not_logged(hass: HomeAssistant, replay: ReplayClient, frozen, entry_data, caplog) -> None:
+    caplog.set_level("DEBUG")
+    await setup(hass, entry_data)
+    replay.fail["getSitePowerflow"] = SolarEdgeAuthError("rejected")
+    await advance(hass, frozen, 60)
+    assert USERNAME not in caplog.text and PASSWORD not in caplog.text
+
+
+async def test_unload(hass: HomeAssistant, replay: ReplayClient, entry_data) -> None:
+    entry = await setup(hass, entry_data)
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    assert entry.state is ConfigEntryState.NOT_LOADED

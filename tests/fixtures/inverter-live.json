@@ -1,0 +1,376 @@
+[
+ {
+  "method": "getSiteEnergyOverview",
+  "args": {
+   "siteId": 1665942
+  },
+  "result": {
+   "energyProducedOverviewList": [
+    {
+     "timePeriod": "LIFE_TIME",
+     "energy": 29338528,
+     "revenue": null
+    },
+    {
+     "timePeriod": "LAST_YEAR",
+     "energy": 4345507,
+     "revenue": null
+    },
+    {
+     "timePeriod": "LAST_MONTH",
+     "energy": 176703,
+     "revenue": null
+    },
+    {
+     "timePeriod": "LAST_DAY",
+     "energy": 7131,
+     "revenue": null
+    }
+   ]
+  }
+ },
+ {
+  "method": "getSiteEquipment",
+  "args": {
+   "siteId": 1665942
+  },
+  "result": {
+   "inverters": {
+    "totalCount": 1,
+    "details": [
+     {
+      "modelName": "SE5K",
+      "serialNumbers": [
+       "7E000000-00"
+      ]
+     }
+    ]
+   },
+   "optimizers": {
+    "totalCount": 16,
+    "details": [
+     {
+      "modelName": "P370",
+      "totalCount": 16
+     }
+    ]
+   },
+   "storage": null,
+   "smartHome": null,
+   "meters": null,
+   "gateways": null,
+   "buis": null,
+   "meterCollars": null,
+   "commercialBackupInterfaces": null,
+   "evChargers": null,
+   "localControllers": null,
+   "cssOds": null,
+   "cssOd": null
+  }
+ },
+ {
+  "method": "getInvertersInformation",
+  "args": {
+   "serials": [
+    "7E000000-00"
+   ]
+  },
+  "result": {
+   "basicInformationList": [
+    {
+     "type_": "apiInverterBasicInformation",
+     "serial": "7E000000-00",
+     "manufacturer": "SolarEdge",
+     "fullModel": "SE5K-RW0TEBNN4",
+     "communication": "ETHERNET",
+     "communicationRole": "LEADER",
+     "dsp1Version": "1.13.2306",
+     "dsp2Version": "2.19.1900",
+     "cpuVersion": "4.21.23",
+     "countryName": "Netherlands",
+     "countryCode": 19
+    }
+   ],
+   "serialToLiveData": {
+    "7E000000-00": {
+     "type_": "apiInverterLiveData",
+     "lastMeasurement": "2026-10-15T11:50:28Z",
+     "inverterStatus": "production",
+     "acEnergyOffGrid_Wh": 0,
+     "acEnergyOnGrid_Wh": 203,
+     "iRcd_A": 0.0041874996,
+     "lastIsolationValue_KOhm": 7629.17,
+     "pAc_W": 1040,
+     "powerLimit_percent": 100,
+     "vDc_V": 747.625,
+     "vL1L2_V": 405.25,
+     "vL2L3_V": 404.375,
+     "vL3L1_V": 404.625
+    }
+   },
+   "serialToPhaseMeasurements": {
+    "7E000000-00": [
+     {
+      "activePower_W": 348,
+      "apparentPower_VA": 353,
+      "cosPhi_Reference": 1,
+      "i_ac_A": 1.5078125,
+      "i_ac_dc_A": -0.0017089844,
+      "reactivePower_VAr": -59,
+      "v_ac_V": 234.79688,
+      "lineNumber_3ph": 1
+     },
+     {
+      "activePower_W": 349,
+      "apparentPower_VA": 350,
+      "cosPhi_Reference": 1,
+      "i_ac_A": 1.53125,
+      "i_ac_dc_A": -0.0034179688,
+      "reactivePower_VAr": -79,
+      "v_ac_V": 232.25,
+      "lineNumber_3ph": 2
+     },
+     {
+      "activePower_W": 343,
+      "apparentPower_VA": 358,
+      "cosPhi_Reference": 1,
+      "i_ac_A": 1.5,
+      "i_ac_dc_A": -0.01928711,
+      "reactivePower_VAr": -69,
+      "v_ac_V": 234.20312,
+      "lineNumber_3ph": 3
+     }
+    ]
+   }
+  }
+ },
+ {
+  "method": "getSiteEnergyByInverter",
+  "args": {
+   "siteId": 1665942,
+   "startDate": "2026-10-15",
+   "endDate": "2026-10-15",
+   "inverterSerials": [
+    "7E000000-00"
+   ],
+   "includeMaxTemperature": true
+  },
+  "result": {
+   "siteId": 1665942,
+   "startDate": "2026-10-15",
+   "endDate": "2026-10-15",
+   "inverters": [
+    {
+     "serial": "7E000000-00",
+     "energy": {
+      "value": 7131,
+      "unit": "watt-hour"
+     },
+     "strings": [
+      {
+       "energy": {
+        "value": 6883.75,
+        "unit": "watt-hour"
+       },
+       "stringRelativeOrder": 0
+      }
+     ],
+     "optimizers": [
+      {
+       "serial": "12000008-08",
+       "energy": {
+        "value": 423.25,
+        "unit": "watt-hour"
+       },
+       "temperature": {
+        "temperature": 34,
+        "temperatureUnit": "CELSIUS"
+       },
+       "color": 0.8957671957671959
+      },
+      {
+       "serial": "12000007-07",
+       "energy": {
+        "value": 472.5,
+        "unit": "watt-hour"
+       },
+       "temperature": {
+        "temperature": 38,
+        "temperatureUnit": "CELSIUS"
+       },
+       "color": 1
+      },
+      {
+       "serial": "12000000-00",
+       "energy": {
+        "value": 458,
+        "unit": "watt-hour"
+       },
+       "temperature": {
+        "temperature": 36,
+        "temperatureUnit": "CELSIUS"
+       },
+       "color": 0.9693121693121693
+      },
+      {
+       "serial": "12000003-03",
+       "energy": {
+        "value": 382.25,
+        "unit": "watt-hour"
+       },
+       "temperature": {
+        "temperature": 32,
+        "temperatureUnit": "CELSIUS"
+       },
+       "color": 0.808994708994709
+      },
+      {
+       "serial": "12000001-01",
+       "energy": {
+        "value": 420.75,
+        "unit": "watt-hour"
+       },
+       "temperature": {
+        "temperature": 36,
+        "temperatureUnit": "CELSIUS"
+       },
+       "color": 0.8904761904761905
+      },
+      {
+       "serial": "1200000F-0F",
+       "energy": {
+        "value": 450.5,
+        "unit": "watt-hour"
+       },
+       "temperature": {
+        "temperature": 34,
+        "temperatureUnit": "CELSIUS"
+       },
+       "color": 0.9534391534391534
+      },
+      {
+       "serial": "1200000E-0E",
+       "energy": {
+        "value": 444.25,
+        "unit": "watt-hour"
+       },
+       "temperature": {
+        "temperature": 32,
+        "temperatureUnit": "CELSIUS"
+       },
+       "color": 0.9402116402116403
+      },
+      {
+       "serial": "1200000B-0B",
+       "energy": {
+        "value": 450.25,
+        "unit": "watt-hour"
+       },
+       "temperature": {
+        "temperature": 34,
+        "temperatureUnit": "CELSIUS"
+       },
+       "color": 0.9529100529100529
+      },
+      {
+       "serial": "12000004-04",
+       "energy": {
+        "value": 446,
+        "unit": "watt-hour"
+       },
+       "temperature": {
+        "temperature": 36,
+        "temperatureUnit": "CELSIUS"
+       },
+       "color": 0.9439153439153439
+      },
+      {
+       "serial": "1200000A-0A",
+       "energy": {
+        "value": 462,
+        "unit": "watt-hour"
+       },
+       "temperature": {
+        "temperature": 34,
+        "temperatureUnit": "CELSIUS"
+       },
+       "color": 0.9777777777777779
+      },
+      {
+       "serial": "12000002-02",
+       "energy": {
+        "value": 451.75,
+        "unit": "watt-hour"
+       },
+       "temperature": {
+        "temperature": 38,
+        "temperatureUnit": "CELSIUS"
+       },
+       "color": 0.9560846560846561
+      },
+      {
+       "serial": "12000005-05",
+       "energy": {
+        "value": 469,
+        "unit": "watt-hour"
+       },
+       "temperature": {
+        "temperature": 36,
+        "temperatureUnit": "CELSIUS"
+       },
+       "color": 0.9925925925925927
+      },
+      {
+       "serial": "12000009-09",
+       "energy": {
+        "value": 448.75,
+        "unit": "watt-hour"
+       },
+       "temperature": {
+        "temperature": 34,
+        "temperatureUnit": "CELSIUS"
+       },
+       "color": 0.9497354497354498
+      },
+      {
+       "serial": "12000006-06",
+       "energy": {
+        "value": 425.5,
+        "unit": "watt-hour"
+       },
+       "temperature": {
+        "temperature": 36,
+        "temperatureUnit": "CELSIUS"
+       },
+       "color": 0.9005291005291005
+      },
+      {
+       "serial": "1200000D-0D",
+       "energy": {
+        "value": 410,
+        "unit": "watt-hour"
+       },
+       "temperature": {
+        "temperature": 34,
+        "temperatureUnit": "CELSIUS"
+       },
+       "color": 0.8677248677248677
+      },
+      {
+       "serial": "1200000C-0C",
+       "energy": {
+        "value": 269,
+        "unit": "watt-hour"
+       },
+       "temperature": {
+        "temperature": 30,
+        "temperatureUnit": "CELSIUS"
+       },
+       "color": 0.5693121693121693
+      }
+     ]
+    }
+   ]
+  }
+ }
+]
