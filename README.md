@@ -175,11 +175,15 @@ reported per site.
 | Power | charging positive, discharging negative |
 | Battery | charge level % |
 | State | charging, discharging, idle |
-| Charged, Discharged *(optional)* | battery counters, kept rising if SolarEdge resets them |
-| Stored energy, State of health *(optional)* | stored kWh; full-pack capacity as % of the nameplate |
+| Charged, Discharged | kWh into and out of the batteries, added up from the battery power at each poll. `total_increasing`, for the Energy dashboard. |
+| Stored energy, State of health *(optional)* | stored kWh, summed over the batteries; full-pack capacity as % of the nameplate |
 
-The battery fields come from 2.0.0, which took them from another project
-(nerd2/solaredgego). Real battery answers haven't been seen yet.
+Checked against a real site with two 9.7 kWh SolarEdge Home Batteries: stored
+energy matches SolarEdge's own total. SolarEdge's charge and discharge
+counters in the same answer were 0 although the batteries cycle daily, so
+Charged and Discharged are calculated from the power instead (2.0.0 read the
+counters). With a 60 s poll they are within a few percent. Energy during an
+outage longer than 10 minutes is not counted.
 
 ### EV charger
 
@@ -217,8 +221,9 @@ address, password, inverter serials and vehicle name are redacted.
 - **The login, against a real account.** The client expects a 302 with
   session cookies from `/solaredge-apigw/api/login`, as 2.0.0 does. A 302
   back to a page with `error` in its address is taken as a rejected login.
-- **Battery, EV charger and load controller fields with real hardware.** The
-  mapping follows 2.0.0 and the real EV/load-controller answers in its tests.
+- **EV charger and load controller fields with real hardware.** The mapping
+  follows 2.0.0 and the real EV/load-controller answers in its tests. The
+  battery fields are checked against one real two-battery site.
 - **Whether the inverter's upload moment works for energy-tick timing on
   sites with several inverters.**
 
@@ -240,6 +245,8 @@ and these fixtures:
   They come from briadelour/SolarEdgeEVCharger and solaredge-evcharger-ha#6,
   via 2.0.0.
 - `tests/fixtures/inverter-live.json`: real inverter answers.
+- `tests/fixtures/batteries-two.json`: a real battery answer from a site with
+  two SolarEdge Home Batteries (serials and ids replaced).
 
 | Test file | What it covers |
 | --- | --- |

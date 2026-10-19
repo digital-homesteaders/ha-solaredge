@@ -61,6 +61,9 @@ _LOGGER = logging.getLogger(__name__)
 
 # A site whose equipment list has no inverters is asked again after this long.
 EQUIPMENT_RECHECK_MS = 60 * 60 * 1000
+# Battery power samples further apart than this (an outage) are not
+# integrated: the energy in between is unknown.
+MAX_SAMPLE_GAP_MS = 10 * 60 * 1000
 
 type SolarEdgeConfigEntry = ConfigEntry[SolarEdgeCoordinator]
 
@@ -171,6 +174,10 @@ class SolarEdgeCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         self._seed: dict[str, dict[str, Any]] = {}
         # Site id -> when an empty equipment list was last asked for (epoch ms).
         self._equipment_checked: dict[str, int] = {}
+        # Site id -> the last battery power sample (epoch ms, W).
+        self._battery_sample: dict[str, tuple[int, float]] = {}
+        # Whether the integrated battery energy grew since the last save.
+        self._flow_changed = False
         self._was_available = True
         # The time source; tests replace it.
         self.now_ms = lambda: int(time.time() * 1000)
@@ -391,6 +398,9 @@ class SolarEdgeCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
             # Pending until here: a failed live part keeps it for the next poll.
             self._energy_due = False
             await asyncio.gather(*(self._energy(site, data, slow) for site in self.sites.values()))
+            if self._flow_changed:
+                self._flow_changed = False
+                self._dirty = True
         # The yearly totals run outside the poll and may finish during it.
         for sid, values in self._meter_values.items():
             data.setdefault(device_key(sid, KIND_METER), {}).update(values)
@@ -442,7 +452,10 @@ class SolarEdgeCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
                 if site.has_meter:
                     self._merge(data, site, KIND_METER, mapping.meter_power(powerflow))
                 if site.has_battery:
-                    self._merge(data, site, KIND_BATTERY, mapping.battery_power(powerflow))
+                    battery = mapping.battery_power(powerflow)
+                    if "power" in battery:
+                        battery.update(self._battery_flow(site.site_id, battery["power"]))
+                    self._merge(data, site, KIND_BATTERY, battery)
             devices = answers.get("devices")
             if powerflow or devices:
                 # Without a fresh devices list the powerflow's charger status
@@ -545,6 +558,25 @@ class SolarEdgeCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
                 total = self._monotonic(f"{sid}:ev:{rid}:charged", charged / 1000)
                 self._merge(data, site, KIND_EV, {"energy_charged": total}, rid)
 
+    def _battery_flow(self, site_id: str, power: float) -> dict[str, float]:
+        """Charged and discharged kWh so far, integrated from the power samples.
+
+        Kept in the store, which is written on energy ticks (and on unload), not
+        on every poll.
+        """
+        now = self.now_ms()
+        flow = self._stored.setdefault("battery_flow", {}).setdefault(site_id, {"charged": 0.0, "discharged": 0.0})
+        last = self._battery_sample.get(site_id)
+        self._battery_sample[site_id] = (now, power)
+        gap = max(MAX_SAMPLE_GAP_MS, 3 * self.poll_interval * 1000)
+        if last is not None and 0 < now - last[0] <= gap:
+            charged, discharged = mapping.battery_flow_kwh(last[1], power, (now - last[0]) / 1000)
+            if charged or discharged:
+                flow["charged"] += charged
+                flow["discharged"] += discharged
+                self._flow_changed = True
+        return {"energy_charged": round(flow["charged"], 3), "energy_discharged": round(flow["discharged"], 3)}
+
     def _battery_energy(self, site_id: str, batteries: list[dict[str, Any]]) -> dict[str, Any]:
         # The unit is kept from the last answer with a nameplate: a guess that
         # flipped between answers would change the counters 1000-fold.
@@ -553,11 +585,7 @@ class SolarEdgeCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
             self._stored["units"][site_id] = unit
             self._dirty = True
         to_kwh = self._stored["units"].get(site_id, 0.001)
-        values = mapping.battery_energy(batteries, to_kwh)
-        for key in ("energy_charged", "energy_discharged"):
-            if key in values:
-                values[key] = self._monotonic(f"{site_id}:battery:{key}", values[key])
-        return values
+        return mapping.battery_energy(batteries, to_kwh)
 
     async def _meter_totals(self, site: SiteInfo) -> None:
         """The meter's yearly totals, outside the poll; one run per site at a time."""

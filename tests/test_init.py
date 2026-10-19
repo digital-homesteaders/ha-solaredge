@@ -103,8 +103,9 @@ async def test_setup_creates_devices_and_values(hass: HomeAssistant, replay: Rep
         ("sensor", f"{SITE}_battery_power"): "500",
         ("sensor", f"{SITE}_battery_soc"): "62",
         ("sensor", f"{SITE}_battery_state"): "charging",
-        ("sensor", f"{SITE}_battery_energy_charged"): "1234.567",
-        ("sensor", f"{SITE}_battery_energy_discharged"): "1000.0",
+        # Integrated from the battery power: nothing yet after one sample.
+        ("sensor", f"{SITE}_battery_energy_charged"): "0.0",
+        ("sensor", f"{SITE}_battery_energy_discharged"): "0.0",
         ("sensor", f"{SITE}_battery_residual_energy"): "6.2",
         ("sensor", f"{SITE}_battery_state_of_health"): "95",
         ("sensor", f"{SITE}_ev_{EV}_power"): "9509",
@@ -439,12 +440,49 @@ async def test_empty_equipment_is_asked_hourly(hass: HomeAssistant, replay: Repl
 
 
 async def test_store_written_only_on_change(hass: HomeAssistant, replay: ReplayClient, frozen, entry_data) -> None:
+    flow = replay.results["getSitePowerflow"][0]["result"]
+    flow["storage"] = {**flow["storage"], "currentPower": 0, "status": "idle"}
     entry = await setup(hass, entry_data)
     with patch.object(entry.runtime_data._store, "async_delay_save") as save:
-        # Ten minutes of polls and two energy ticks with the same answers.
+        # Ten minutes of polls and two energy ticks with nothing new.
         await advance(hass, frozen, 600, step=30)
         assert save.call_count == 0
-        batteries = replay.results["getSiteBatteries"][0]["result"]
-        batteries["devicesByType"]["BATTERY"][0]["chargeEnergy"] += 1000
+        # The battery charges: its integrated energy is saved on the next
+        # energy tick, not on every poll.
+        flow["storage"] = {**flow["storage"], "currentPower": 2.0, "status": "charging"}
         await advance(hass, frozen, 300, step=30)
         assert save.call_count == 1
+
+
+async def test_battery_energy_is_integrated_from_power(hass: HomeAssistant, replay: ReplayClient, frozen, entry_data) -> None:
+    # The synthetic battery charges at 500 W.
+    await setup(hass, entry_data)
+    await advance(hass, frozen, 3600, step=30)
+    charged = float(state(hass, "sensor", f"{SITE}_battery_energy_charged"))
+    # 500 W for (almost) an hour: the last poll may be up to a minute short.
+    assert 0.48 <= charged <= 0.5
+    assert state(hass, "sensor", f"{SITE}_battery_energy_discharged") == "0.0"
+    flow = replay.results["getSitePowerflow"][0]["result"]
+    flow["storage"] = {**flow["storage"], "currentPower": 1.5, "status": "discharging"}
+    await advance(hass, frozen, 1800, step=30)
+    discharged = float(state(hass, "sensor", f"{SITE}_battery_energy_discharged"))
+    assert 0.7 <= discharged <= 0.76
+    # Charged did not fall or move back.
+    assert float(state(hass, "sensor", f"{SITE}_battery_energy_charged")) >= charged
+    # The totals survive a reload (store).
+    entry = hass.config_entries.async_entries(DOMAIN)[0]
+    await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done(wait_background_tasks=True)
+    assert float(state(hass, "sensor", f"{SITE}_battery_energy_discharged")) == discharged
+
+
+async def test_battery_energy_not_guessed_across_an_outage(hass: HomeAssistant, replay: ReplayClient, frozen, entry_data) -> None:
+    entry = await setup(hass, entry_data)
+    replay.fail["getSitePowerflow"] = SolarEdgeConnectionError("down")
+    replay.fail["getSiteDevices"] = SolarEdgeConnectionError("down")
+    await advance(hass, frozen, 3 * 3600, step=120)
+    replay.fail.clear()
+    await advance(hass, frozen, BACKOFF_MAX, step=60)
+    assert entry.runtime_data.outages == 0
+    # Three hours unseen are not counted as 500 W charging.
+    assert float(state(hass, "sensor", f"{SITE}_battery_energy_charged")) < 0.3

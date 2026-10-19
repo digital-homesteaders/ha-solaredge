@@ -1,0 +1,115 @@
+{
+ "_source": "Real getSiteBatteries answer, two SolarEdge Home Battery 400V (9.7 kWh each) on one inverter, 2026-10-18; serials and ids replaced. The app showed 95 %.",
+ "response": {
+  "@c": ".SiteDevicesResponse",
+  "status": "PASSED",
+  "httpStatus": 200,
+  "warningMessages": [],
+  "infoMessages": [],
+  "errorMessages": [],
+  "isUpdated": true,
+  "fieldLastUpdateTS": 1792387572858,
+  "updateRefreshRate": 3,
+  "globalCommunicationStatus": "ACTIVE",
+  "storageInfo": {
+   "portiaBackupReserveViewCapable": true,
+   "portiaBackupReserveEditCapable": false,
+   "userBackupReserveValue": 100.0,
+   "backupMinSOE": 4.0,
+   "userBackupReserveCommandExpiration": null,
+   "previousBackupReserve": null,
+   "storagePower": 0.0,
+   "storageFullPackEnergy": 19111.68,
+   "storageRemainingEnergy": 18193.68,
+   "backupReserveControlUpToLimit": 72,
+   "weatherGuardServiceConfiguration": "ENABLED",
+   "weatherGuardServiceStatus": "NOT_AVAILABLE_DUE_TO_NOT_BACKUP_RESERVE",
+   "chargingInitiator": "MOBILE",
+   "weatherGuardStartTime": null
+  },
+  "touInfo": {
+   "isSupported": true,
+   "reasons": [],
+   "smartPredictionSupported": false,
+   "smartPredictionDefaultOn": false,
+   "userBatteryProfileSupported": true,
+   "batteryProfileTouAllowedByNumberOfInverter": true,
+   "exportImportMeterExist": true,
+   "notManagedByGridServices": true,
+   "batteryProfileManualTouSupported": true
+  },
+  "excessPvSupported": false,
+  "essentialDevicesSupported": false,
+  "rfIdCardsListSupported": "FEATURE_CLOSED",
+  "billingProviders": [],
+  "devices": [],
+  "devicesByType": {
+   "POLESTAR": [
+    {
+     "connectedDevices": [
+      1001,
+      1002
+     ],
+     "communicationStatus": "ACTIVE",
+     "lastUpdated": null,
+     "lastCommunicationTime": 1792387565368,
+     "info": {
+      "deviceId": 1000,
+      "serialNumber": "INV00001",
+      "swVersion": "4.23"
+     }
+    }
+   ],
+   "BATTERY": [
+    {
+     "namePlateEnergy": 9700.0,
+     "remainingEnergy": 9210.24,
+     "fullPackEnergy": 9642.24,
+     "dischargeEnergy": 0.0,
+     "chargeEnergy": 0.0,
+     "estimatedRemainingTime": 0,
+     "batteryState": "IDLE",
+     "powerSavingMode": false,
+     "communicationStatus": "ACTIVE",
+     "lastUpdated": 1792387572904,
+     "lastCommunicationTime": 1792387565365,
+     "info": {
+      "deviceId": 1001,
+      "serialNumber": "BAT00001",
+      "name": "Battery BAT00001",
+      "manufacturer": "SolarEdge",
+      "model": "SolarEdge Home Battery 400V",
+      "swVersion": "SMCU 1.1.57 DCDC 1.1.33 BMS 2.1.4",
+      "portiaSN": "INV00001"
+     }
+    },
+    {
+     "namePlateEnergy": 9700.0,
+     "remainingEnergy": 8983.44,
+     "fullPackEnergy": 9469.44,
+     "dischargeEnergy": 0.0,
+     "chargeEnergy": 0.0,
+     "estimatedRemainingTime": 0,
+     "batteryState": "IDLE",
+     "powerSavingMode": false,
+     "communicationStatus": "ACTIVE",
+     "lastUpdated": 1792387572904,
+     "lastCommunicationTime": 1792387565365,
+     "info": {
+      "deviceId": 1002,
+      "serialNumber": "BAT00002",
+      "name": "Battery BAT00002",
+      "manufacturer": "SolarEdge",
+      "model": "SolarEdge Home Battery 400V",
+      "swVersion": "SMCU 1.1.57 DCDC 1.1.33 BMS 2.1.4",
+      "portiaSN": "INV00001"
+     }
+    }
+   ]
+  },
+  "gridProgram": {
+   "onBoard": false,
+   "program": null
+  }
+ }
+}

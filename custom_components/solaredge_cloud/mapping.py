@@ -351,9 +351,13 @@ def batteries_of(response: Any) -> list[dict[str, Any]]:
 
 
 def battery_energy(batteries: Sequence[Mapping[str, Any]], to_kwh: float) -> dict[str, Any]:
-    """Energies (kWh, before the never-falling correction) and health of the batteries.
+    """Stored energy (kWh) and health of the batteries.
 
-    Not seen live: the fields come from nerd2/solaredgego via 2.0.0.
+    Checked against a real two-battery site (tests/fixtures/batteries-two.json):
+    remainingEnergy adds up to SolarEdge's own storageRemainingEnergy. Its
+    chargeEnergy and dischargeEnergy were 0 although the batteries cycle
+    daily, so charged/discharged are integrated from the battery power
+    instead (battery_flow_kwh), unlike 2.0.0.
     """
     def energy(key: str) -> float | None:
         value = _sum(batteries, key)
@@ -362,14 +366,31 @@ def battery_energy(batteries: Sequence[Mapping[str, Any]], to_kwh: float) -> dic
     name_plate = _sum(batteries, "namePlateEnergy")
     full_pack = energy("fullPackEnergy")
     values: dict[str, Any] = {
-        "energy_charged": energy("chargeEnergy"),
-        "energy_discharged": energy("dischargeEnergy"),
         "residual_energy": energy("remainingEnergy"),
         "state_of_health": None,
     }
     if full_pack is not None and name_plate:
         values["state_of_health"] = min(100, round(full_pack / (name_plate * to_kwh) * 100))
     return {key: value for key, value in values.items() if value is not None}
+
+
+def battery_flow_kwh(previous_w: float, current_w: float, seconds: float) -> tuple[float, float]:
+    """kWh charged and discharged between two battery power samples (charging positive).
+
+    Trapezoids; when the power changes sign the interval is split where it
+    crosses zero, so charging never cancels discharging.
+    """
+    hours = seconds / 3600
+    if previous_w >= 0 and current_w >= 0:
+        return (previous_w + current_w) / 2 * hours / 1000, 0.0
+    if previous_w <= 0 and current_w <= 0:
+        return 0.0, -(previous_w + current_w) / 2 * hours / 1000
+    zero_at = previous_w / (previous_w - current_w)
+    before = previous_w / 2 * zero_at * hours / 1000
+    after = current_w / 2 * (1 - zero_at) * hours / 1000
+    charged = max(before, 0.0) + max(after, 0.0)
+    discharged = -min(before, 0.0) - min(after, 0.0)
+    return charged, discharged
 
 
 # ---------------------------------------------------------------- EV charger

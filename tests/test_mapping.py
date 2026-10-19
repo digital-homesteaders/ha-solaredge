@@ -108,8 +108,8 @@ def test_battery() -> None:
     unit = mapping.battery_unit(batteries)
     assert unit == 0.001
     values = mapping.battery_energy(batteries, unit)
-    assert values["energy_charged"] == pytest.approx(1234.567)
-    assert values["energy_discharged"] == pytest.approx(1000)
+    # SolarEdge's charge/discharge counters are not used (see the real answer below).
+    assert set(values) == {"residual_energy", "state_of_health"}
     assert values["residual_energy"] == pytest.approx(6.2)
     assert values["state_of_health"] == 95
 
@@ -120,7 +120,7 @@ def test_battery_in_kwh() -> None:
     unit = mapping.battery_unit(batteries)
     assert unit == 1.0
     values = mapping.battery_energy(batteries, unit)
-    assert values["energy_charged"] == 1234.5 and values["residual_energy"] == 6.2 and values["state_of_health"] == 95
+    assert values["residual_energy"] == 6.2 and values["state_of_health"] == 95
 
 
 # state -> charging state, charging, charge mode, solar charging (gruijter test/devices.js)
@@ -174,3 +174,38 @@ def test_load_controllers() -> None:
     boiler = mapping.hlc_values(result("getSiteDevices"), "102")
     assert (boiler["state"], boiler["power"]) == ("on", 2000)
     assert mapping.hlc_values(answer, "unknown") == {}
+
+
+def test_real_two_battery_answer() -> None:
+    """Two 9.7 kWh SolarEdge Home Batteries at 95 % (tests/fixtures/batteries-two.json)."""
+    answer = load_fixture("batteries-two.json")["response"]
+    batteries = mapping.batteries_of(answer)
+    assert len(batteries) == 2
+    unit = mapping.battery_unit(batteries)
+    assert unit == 0.001
+    values = mapping.battery_energy(batteries, unit)
+    # The same as SolarEdge's own storageRemainingEnergy, and 95 % of the full pack.
+    assert values["residual_energy"] == pytest.approx(answer["storageInfo"]["storageRemainingEnergy"] / 1000)
+    assert values["residual_energy"] / (answer["storageInfo"]["storageFullPackEnergy"] / 1000) == pytest.approx(0.952, abs=0.001)
+    assert values["state_of_health"] == 99
+    # Its counters are 0: nothing to take from them.
+    assert all(b["chargeEnergy"] == 0 and b["dischargeEnergy"] == 0 for b in batteries)
+    # The inverter (POLESTAR) is no battery.
+    assert mapping.discover({"storage": {"isActive": True, "chargeLevel": 95}}, None)["battery"]
+
+
+@pytest.mark.parametrize(
+    ("previous", "current", "charged", "discharged"),
+    [
+        (1000, 1000, 1.0, 0.0),
+        (0, 2000, 1.0, 0.0),
+        (-1000, -3000, 0.0, 2.0),
+        (0, 0, 0.0, 0.0),
+        # A sign change splits at zero: 1 kW to -1 kW is half an hour each way.
+        (1000, -1000, 0.25, 0.25),
+        (3000, -1000, 1.125, 0.125),
+    ],
+)
+def test_battery_flow(previous: float, current: float, charged: float, discharged: float) -> None:
+    got = mapping.battery_flow_kwh(previous, current, 3600)
+    assert got == (pytest.approx(charged), pytest.approx(discharged))

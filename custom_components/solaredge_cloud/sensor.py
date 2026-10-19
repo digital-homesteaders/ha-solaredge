@@ -137,8 +137,9 @@ SENSORS: tuple[SolarEdgeSensorDescription, ...] = (
         device_class=SensorDeviceClass.ENUM,
         options=BATTERY_STATES,
     ),
-    _energy(KIND_BATTERY, "energy_charged", optional=True),
-    _energy(KIND_BATTERY, "energy_discharged", optional=True),
+    # Integrated from the battery power: SolarEdge's own counters stay at 0.
+    _energy(KIND_BATTERY, "energy_charged"),
+    _energy(KIND_BATTERY, "energy_discharged"),
     SolarEdgeSensorDescription(
         kind=KIND_BATTERY,
         key="residual_energy",
