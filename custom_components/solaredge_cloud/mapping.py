@@ -39,6 +39,10 @@ INVERTER_STATUSES = [
 
 BATTERY_STATES = ["charging", "discharging", "idle"]
 
+# Values that a None clears instead of leaving the last one: an unknown status,
+# and no optimizer temperature yet today (before sunrise).
+CLEARABLE = frozenset({"status", "optimizer_temperature_max"})
+
 # EV connectionStatus (lower case in the powerflow, upper case in getSiteDevices)
 # -> [charging state, charging]
 EV_CONNECTION = {

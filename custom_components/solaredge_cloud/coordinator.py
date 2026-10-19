@@ -59,6 +59,9 @@ from .timing import EnergyTiming, delay_to_next_tick, parse_time_ms
 
 _LOGGER = logging.getLogger(__name__)
 
+# A site whose equipment list has no inverters is asked again after this long.
+EQUIPMENT_RECHECK_MS = 60 * 60 * 1000
+
 type SolarEdgeConfigEntry = ConfigEntry[SolarEdgeCoordinator]
 
 
@@ -162,6 +165,12 @@ class SolarEdgeCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
             hass, STORAGE_VERSION, f"{DOMAIN}.{entry.entry_id}"
         )
         self._stored: dict[str, Any] = {}
+        # Whether _stored changed since the last save was scheduled.
+        self._dirty = False
+        # Discovery answers per site, used by the first poll instead of asking again.
+        self._seed: dict[str, dict[str, Any]] = {}
+        # Site id -> when an empty equipment list was last asked for (epoch ms).
+        self._equipment_checked: dict[str, int] = {}
         self._was_available = True
         # The time source; tests replace it.
         self.now_ms = lambda: int(time.time() * 1000)
@@ -177,22 +186,44 @@ class SolarEdgeCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         self._stored.setdefault("seen", {})
         try:
             sites = await self.client.get_sites()
-            for site in sites:
-                info = await self._discover_site(site)
-                self.sites[info.site_id] = info
         except SolarEdgeAuthError as err:
             raise ConfigEntryAuthFailed(str(err)) from err
         except SolarEdgeError as err:
             raise UpdateFailed(f"Could not read the SolarEdge sites: {err}") from err
-        self._store.async_delay_save(lambda: self._stored, 1)
+        results = await asyncio.gather(
+            *(self._discover_site(site) for site in sites), return_exceptions=True
+        )
+        errors: list[BaseException] = []
+        for site, result in zip(sites, results, strict=True):
+            if isinstance(result, SolarEdgeAuthError):
+                raise ConfigEntryAuthFailed(str(result)) from result
+            if isinstance(result, SiteInfo):
+                self.sites[result.site_id] = result
+                continue
+            if not isinstance(result, SolarEdgeError):
+                raise result
+            # A failing site does not hold back the others (2.0.0 pairing did the
+            # same). One seen before keeps its devices; polls retry it.
+            info = self._site_from_store(site)
+            if info is not None:
+                _LOGGER.warning("SolarEdge site %s not reachable at setup (%s); using what was found before", info.site_id, result)
+                self.sites[info.site_id] = info
+            else:
+                _LOGGER.warning("SolarEdge site %s left out: %s", site.get("id"), result)
+                errors.append(result)
+        if not self.sites and errors:
+            raise UpdateFailed(f"Could not read any SolarEdge site: {errors[0]}") from errors[0]
+        self._dirty = True
+        self._save()
 
-    async def _discover_site(self, site: dict[str, Any]) -> SiteInfo:
+    def _site_info(self, site: dict[str, Any]) -> SiteInfo:
+        """A site from the getSites answer, without its devices."""
         site_id = str(site["id"])
         tz = site.get("timezone")
         installed = parse_time_ms(site.get("installationDate"))
         if installed is None and isinstance(site.get("installationDate"), str):
             installed = parse_time_ms(site["installationDate"][:10] + "T00:00:00+00:00")
-        info = SiteInfo(
+        return SiteInfo(
             site_id=site_id,
             name=str(site.get("name") or f"Site {site_id}"),
             timezone=tz,
@@ -201,6 +232,32 @@ class SolarEdgeCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
             else _year_in(datetime.fromtimestamp(installed / 1000, tz=dt_util.UTC), tz),
             peak_power=mapping.finite(site.get("peakPower")),
         )
+
+    def _site_from_store(self, site: dict[str, Any]) -> SiteInfo | None:
+        """A site with the devices found at an earlier setup; None if never seen."""
+        if str(site["id"]) not in self._stored["seen"]:
+            return None
+        info = self._site_info(site)
+        self._apply_seen(info, {"meter": False, "battery": False, "ev": {}, "hlc": {}})
+        return info
+
+    def _apply_seen(self, info: SiteInfo, found: dict[str, Any]) -> None:
+        """Once seen, a device stays: a battery or meter that is inactive at the
+        next restart (night, empty) keeps its entities."""
+        seen = self._stored["seen"].setdefault(info.site_id, {"meter": False, "battery": False, "ev": {}, "hlc": {}})
+        seen["meter"] = seen["meter"] or found["meter"]
+        seen["battery"] = seen["battery"] or found["battery"]
+        seen["ev"].update(found["ev"])
+        seen["hlc"].update(found["hlc"])
+        info.has_meter = seen["meter"]
+        info.has_battery = seen["battery"]
+        info.ev_chargers = dict(seen["ev"])
+        info.load_controllers = dict(seen["hlc"])
+
+    async def _discover_site(self, site: dict[str, Any]) -> SiteInfo:
+        """A site and its devices, from its powerflow, devices list and equipment."""
+        info = self._site_info(site)
+        site_id = info.site_id
         powerflow: Any
         devices: Any
         equipment: Any
@@ -215,22 +272,12 @@ class SolarEdgeCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
                 raise result
         if isinstance(powerflow, BaseException):
             raise powerflow
-        found = mapping.discover(
-            powerflow, None if isinstance(devices, BaseException) else devices
-        )
-        # Once seen, a device stays: a battery or meter that is inactive at the
-        # next restart (night, empty) keeps its entities.
-        seen = self._stored["seen"].setdefault(site_id, {"meter": False, "battery": False, "ev": {}, "hlc": {}})
-        seen["meter"] = seen["meter"] or found["meter"]
-        seen["battery"] = seen["battery"] or found["battery"]
-        seen["ev"].update(found["ev"])
-        seen["hlc"].update(found["hlc"])
-        info.has_meter = seen["meter"]
-        info.has_battery = seen["battery"]
-        info.ev_chargers = dict(seen["ev"])
-        info.load_controllers = dict(seen["hlc"])
+        devices = None if isinstance(devices, BaseException) else devices
+        self._apply_seen(info, mapping.discover(powerflow, devices))
         if not isinstance(equipment, BaseException):
             info.inverter_serials = mapping.equipment_serials(equipment)
+            self._equipment_checked[site_id] = self.now_ms()
+        self._seed[site_id] = {"powerflow": powerflow, "devices": devices}
         return info
 
     @callback
@@ -264,18 +311,26 @@ class SolarEdgeCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         self.timing.judge_pending = True
         # While backing off or waiting for new credentials the regular poll
         # picks up the pending energy reading later.
-        if self.outages or isinstance(self.last_exception, ConfigEntryAuthFailed):
+        if self.outages or self.auth_failed:
             return
         self.config_entry.async_create_background_task(
             self.hass, self.async_refresh(), f"{DOMAIN} energy tick"
         )
 
+    @property
+    def auth_failed(self) -> bool:
+        """Whether polling stopped for a rejected login (until reauth reloads the entry)."""
+        return isinstance(self.last_exception, ConfigEntryAuthFailed)
+
     @callback
     def async_set_poll_interval(self, seconds: int) -> None:
         """A changed poll interval from the options flow."""
         self.poll_interval = seconds
-        if not self.outages:
-            self.update_interval = timedelta(seconds=seconds)
+        if self.outages:
+            return
+        self.update_interval = timedelta(seconds=seconds)
+        # Not after a rejected login: that would try the rejected password again.
+        if not self.auth_failed:
             self._schedule_refresh()
 
     # ------------------------------------------------------------ availability
@@ -335,25 +390,33 @@ class SolarEdgeCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         if energy:
             # Pending until here: a failed live part keeps it for the next poll.
             self._energy_due = False
-            for site in self.sites.values():
-                await self._energy(site, data, slow)
+            await asyncio.gather(*(self._energy(site, data, slow) for site in self.sites.values()))
         # The yearly totals run outside the poll and may finish during it.
         for sid, values in self._meter_values.items():
             data.setdefault(device_key(sid, KIND_METER), {}).update(values)
-        self._store.async_delay_save(lambda: self._stored, 10)
+        self._save()
         return data
+
+    def _save(self) -> None:
+        """Schedule a store write, only when something in it changed."""
+        if self._dirty:
+            self._dirty = False
+            self._store.async_delay_save(lambda: self._stored, 10)
 
     async def _live(self, data: dict[str, dict[str, Any]], energy: bool) -> None:
         """The powerflow (and devices list) of every site, all at once."""
         requests: list[tuple[SiteInfo, str, Any]] = []
+        seeded: dict[str, dict[str, Any]] = {}
         for site in self.sites.values():
+            # The first poll right after setup reuses the discovery answers.
+            if seed := self._seed.pop(site.site_id, None):
+                seeded[site.site_id] = {kind: answer for kind, answer in seed.items() if answer is not None}
+                continue
             # Only an inverter and the sun is down: the energy tick is enough.
             if not (site.inverter_only and self._solar_idle.get(site.site_id) and not energy):
                 requests.append((site, "powerflow", self.client.get_site_powerflow(site.site_id)))
-            if site.ev_chargers or site.load_controllers:
+            if self._devices_due(site, data, energy):
                 requests.append((site, "devices", self.client.get_site_devices(site.site_id)))
-        if not requests:
-            return
         results = await asyncio.gather(*(request for _, _, request in requests), return_exceptions=True)
         errors = [result for result in results if isinstance(result, BaseException)]
         for error in errors:
@@ -361,12 +424,12 @@ class SolarEdgeCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
                 raise error
             if not isinstance(error, SolarEdgeError):
                 raise error
-        if len(errors) == len(results):
+        if errors and len(errors) == len(results):
             raise errors[0]
         for error in errors:
             _LOGGER.debug("Part of a SolarEdge poll failed: %s", error)
 
-        by_site: dict[str, dict[str, Any]] = {}
+        by_site: dict[str, dict[str, Any]] = seeded
         for (site, kind, _), result in zip(requests, results, strict=True):
             if not isinstance(result, BaseException):
                 by_site.setdefault(site.site_id, {})[kind] = result
@@ -382,11 +445,31 @@ class SolarEdgeCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
                     self._merge(data, site, KIND_BATTERY, mapping.battery_power(powerflow))
             devices = answers.get("devices")
             if powerflow or devices:
+                # Without a fresh devices list the powerflow's charger status
+                # counts; the session values stay from the last list.
                 for rid in site.ev_chargers:
                     self._merge(data, site, KIND_EV, mapping.ev_values(powerflow, devices, rid), rid)
             if devices:
                 for rid in site.load_controllers:
                     self._merge(data, site, KIND_HLC, mapping.hlc_values(devices, rid), rid)
+
+    def _devices_due(self, site: SiteInfo, data: dict[str, dict[str, Any]], energy: bool) -> bool:
+        """Whether this poll needs the site's devices list.
+
+        Load controllers need it every poll. EV chargers only while one is
+        charging (for its own power and session); otherwise the powerflow has
+        their status, and the list is read on the energy tick.
+        """
+        if site.load_controllers:
+            return True
+        if not site.ev_chargers:
+            return False
+        if energy:
+            return True
+        return any(
+            data.get(device_key(site.site_id, KIND_EV, rid), {}).get("charging") is not False
+            for rid in site.ev_chargers
+        )
 
     async def _optional(self, request: Any) -> Any:
         """An energy-tick reading: a failure leaves the values as they are.
@@ -405,14 +488,17 @@ class SolarEdgeCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         """The energy tick's readings of one site."""
         sid = site.site_id
         now_ms = self.now_ms()
-        if not site.inverter_serials:
+        if not site.inverter_serials and now_ms - self._equipment_checked.get(sid, 0) >= EQUIPMENT_RECHECK_MS:
+            # A site without inverters in its equipment list is asked again hourly, not every tick.
+            self._equipment_checked[sid] = now_ms
             equipment = await self._optional(self.client.get_site_equipment(sid))
             site.inverter_serials = mapping.equipment_serials(equipment)
         serials = site.inverter_serials
 
-        overview, information = await asyncio.gather(
+        overview, information, battery_answer = await asyncio.gather(
             self._optional(self.client.get_site_energy_overview(sid)),
             self._optional(self.client.get_inverters_information(serials)) if serials else _none(),
+            self._optional(self.client.get_site_batteries(sid)) if site.has_battery else _none(),
         )
         self._merge(data, site, KIND_INVERTER, mapping.inverter_energy(overview))
         live = mapping.inverter_live(information)
@@ -424,10 +510,8 @@ class SolarEdgeCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
                     self._schedule_energy_tick()
             self._merge(data, site, KIND_INVERTER, mapping.inverter_details(information, now_ms, self.timing.cadence_ms))
 
-        if site.has_battery:
-            batteries = mapping.batteries_of(await self._optional(self.client.get_site_batteries(sid)))
-            if batteries:
-                self._merge(data, site, KIND_BATTERY, self._battery_energy(sid, batteries))
+        if batteries := mapping.batteries_of(battery_answer):
+            self._merge(data, site, KIND_BATTERY, self._battery_energy(sid, batteries))
 
         if site.has_meter:
             task = self._meter_tasks.get(sid)
@@ -439,23 +523,22 @@ class SolarEdgeCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         if not slow:
             return
         asleep = mapping.is_asleep(live, now_ms, self.timing.cadence_ms) if live else False
-        communication, alerts = await asyncio.gather(
+        today = datetime.fromtimestamp(now_ms / 1000, tz=_zone(site.timezone)).date().isoformat()
+        rids = list(site.ev_chargers)
+        communication, alerts, by_inverter, *histories = await asyncio.gather(
             self._optional(self.client.get_site_communication(sid)),
             self._optional(self.client.get_site_alerts(sid)),
+            self._optional(self.client.get_site_energy_by_inverter(sid, today, serials)) if serials else _none(),
+            *(self._optional(self.client.get_appliance_sessions_history(sid, rid)) for rid in rids),
         )
         self._merge(data, site, KIND_SITE, mapping.site_values(communication, alerts, asleep))
-        if serials:
-            today = datetime.fromtimestamp(now_ms / 1000, tz=_zone(site.timezone)).date().isoformat()
-            by_inverter = await self._optional(self.client.get_site_energy_by_inverter(sid, today, serials))
-            if by_inverter is not None:
-                # None before sunrise: cleared rather than yesterday's.
-                self._merge(
-                    data, site, KIND_INVERTER,
-                    {"optimizer_temperature_max": mapping.max_optimizer_temperature(by_inverter)},
-                    keep_none=True,
-                )
-        for rid in site.ev_chargers:
-            history = await self._optional(self.client.get_appliance_sessions_history(sid, rid))
+        if by_inverter is not None:
+            # None before sunrise: cleared rather than yesterday's (CLEARABLE).
+            self._merge(
+                data, site, KIND_INVERTER,
+                {"optimizer_temperature_max": mapping.max_optimizer_temperature(by_inverter)},
+            )
+        for rid, history in zip(rids, histories, strict=True):
             charged = mapping.ev_charged_wh(history)
             if charged is not None:
                 # Old sessions leave the rolling year: kept rising.
@@ -466,8 +549,9 @@ class SolarEdgeCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         # The unit is kept from the last answer with a nameplate: a guess that
         # flipped between answers would change the counters 1000-fold.
         unit = mapping.battery_unit(batteries)
-        if unit is not None:
+        if unit is not None and self._stored["units"].get(site_id) != unit:
             self._stored["units"][site_id] = unit
+            self._dirty = True
         to_kwh = self._stored["units"].get(site_id, 0.001)
         values = mapping.battery_energy(batteries, to_kwh)
         for key in ("energy_charged", "energy_discharged"):
@@ -480,11 +564,13 @@ class SolarEdgeCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         sid = site.site_id
         now = dt_util.utcnow()
         cache = self._stored["years"].setdefault(sid, {})
+        before = dict(cache)
+        current_year = _year_in(now, site.timezone)
         try:
             totals = await async_meter_totals(
                 self.client,
                 sid,
-                current_year=_year_in(now, site.timezone),
+                current_year=current_year,
                 install_year=site.install_year,
                 cache=cache,
                 now_ms=self.now_ms(),
@@ -495,12 +581,19 @@ class SolarEdgeCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
             _LOGGER.debug("Meter totals for site %s not updated: %s", sid, err)
             return
         finally:
-            self._store.async_delay_save(lambda: self._stored, 10)
+            if cache != before:
+                self._dirty = True
+            self._save()
         values: dict[str, Any] = {}
         for key in ("imported", "exported"):
-            # Lifetime counters never fall: a short answer is a hiccup, not a reset.
+            # Neither falls: a short or empty answer is a hiccup, not a reset
+            # (total_increasing would count the way back up twice). The year's
+            # counter starts again with each new year.
             values[f"energy_{key}"] = self._never_less(f"{sid}:meter:{key}", totals[key] / 1000)
-            values[f"energy_{key}_year"] = round(totals[f"{key}_year"] / 1000, 3)
+            values[f"energy_{key}_year"] = self._never_less(
+                f"{sid}:meter:{key}_year", totals[f"{key}_year"] / 1000, period=current_year
+            )
+        self._save()
         self._meter_values[sid] = values
         if self.data is not None:
             self._merge(self.data, site, KIND_METER, values)
@@ -515,23 +608,26 @@ class SolarEdgeCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         kind: str,
         values: dict[str, Any],
         reporter_id: str | None = None,
-        keep_none: bool = False,
     ) -> None:
+        """Merge new values; None keeps the old value unless the key is CLEARABLE."""
         target = data.setdefault(device_key(site.site_id, kind, reporter_id), {})
         for key, value in values.items():
-            if value is not None or keep_none:
+            if value is not None or key in mapping.CLEARABLE:
                 target[key] = value
-            elif key == "status":
-                target[key] = None
 
-    def _never_less(self, name: str, reading: float) -> float:
+    def _never_less(self, name: str, reading: float, period: int | None = None) -> float:
+        """The reading, or the last one when it is lower; a new period starts over."""
         counters = self._stored["counters"]
-        last = counters.get(name, {}).get("last")
+        stored = counters.get(name, {})
+        last = stored.get("last") if stored.get("period") == period else None
         if isinstance(last, (int, float)) and reading < last:
             _LOGGER.debug("%s fell from %s to %s; kept", name, last, reading)
             return last
-        counters[name] = {"last": round(reading, 3)}
-        return round(reading, 3)
+        value = round(reading, 3)
+        if value != last:
+            counters[name] = {"last": value} if period is None else {"last": value, "period": period}
+            self._dirty = True
+        return value
 
     def _monotonic(self, name: str, reading: float) -> float:
         """A counter that never falls, from one that can (a reset, a rolling window).
@@ -546,10 +642,14 @@ class SolarEdgeCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         if isinstance(last, (int, float)) and reading < last:
             if not counter.get("falling"):
                 counter["falling"] = True
+                self._dirty = True
                 return round(last + offset, 3)
             offset += last - reading
             counter["offset"] = offset
+            self._dirty = True
             _LOGGER.debug("%s fell from %s to %s; offset now %s", name, last, reading, offset)
+        if counter.get("falling") or counter.get("last") != reading:
+            self._dirty = True
         counter["falling"] = False
         counter["last"] = reading
         return round(reading + offset, 3)

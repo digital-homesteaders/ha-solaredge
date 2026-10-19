@@ -24,7 +24,7 @@ from custom_components.solaredge_cloud.api import (
 from custom_components.solaredge_cloud.const import BACKOFF_MAX, CONF_POLL_INTERVAL, DOMAIN
 from custom_components.solaredge_cloud.diagnostics import async_get_config_entry_diagnostics
 
-from .conftest import CAPTURED_AT, PASSWORD, USERNAME, ReplayClient
+from .conftest import CAPTURED_AT, PASSWORD, USERNAME, ReplayClient, load_fixture
 
 SITE = "9999999"
 EV = "1000001479067354"
@@ -344,3 +344,107 @@ async def test_unload(hass: HomeAssistant, replay: ReplayClient, entry_data) -> 
     entry = await setup(hass, entry_data)
     assert await hass.config_entries.async_unload(entry.entry_id)
     assert entry.state is ConfigEntryState.NOT_LOADED
+
+
+async def test_failing_site_does_not_block_the_others(hass: HomeAssistant, replay: ReplayClient, entry_data) -> None:
+    sites = replay.results["getSites"][0]["result"]
+    replay.answers["getSites"] = {**sites, "42": {"id": 42, "name": "Old site", "timezone": "UTC"}}
+    good = replay.results["getSitePowerflow"][0]["result"]
+
+    def powerflow(site_id: str) -> Any:
+        if site_id == "42":
+            raise SolarEdgeApiError("Unknown site id", status=404)
+        return good
+
+    replay.answers["getSitePowerflow"] = powerflow
+    entry = await setup(hass, entry_data)
+    assert entry.state is ConfigEntryState.LOADED
+    assert list(entry.runtime_data.sites) == [SITE]
+    assert state(hass, "sensor", f"{SITE}_inverter_power") == "5600"
+
+
+async def test_setup_retries_when_no_site_answers(hass: HomeAssistant, replay: ReplayClient, entry_data) -> None:
+    replay.fail["getSitePowerflow"] = SolarEdgeConnectionError("down")
+    entry = await setup(hass, entry_data)
+    assert entry.state is ConfigEntryState.SETUP_RETRY
+
+
+async def test_startup_does_not_ask_twice(hass: HomeAssistant, replay: ReplayClient, entry_data) -> None:
+    await setup(hass, entry_data)
+    # Discovery's answers feed the first poll.
+    assert replay.count("getSitePowerflow") == 1
+    assert replay.count("getSiteDevices") == 1
+    assert replay.count("getSiteEquipment") == 1
+
+
+async def test_year_totals_survive_an_empty_answer(hass: HomeAssistant, replay: ReplayClient, frozen, entry_data) -> None:
+    await setup(hass, entry_data)
+    assert state(hass, "sensor", f"{SITE}_meter_energy_imported_year") == "1400.0"
+    # Past years are cached, so only this year is asked: and answers no data.
+    replay.answers["getSiteMeasurements"] = {"summary": None}
+    await advance(hass, frozen, 50)
+    assert replay.count("getSiteMeasurements") == 4
+    assert state(hass, "sensor", f"{SITE}_meter_energy_imported_year") == "1400.0"
+    assert state(hass, "sensor", f"{SITE}_meter_energy_exported_year") == "2700.0"
+    assert state(hass, "sensor", f"{SITE}_meter_energy_imported") == "4400.0"
+
+
+async def test_new_poll_interval_does_not_resume_after_rejected_login(
+    hass: HomeAssistant, replay: ReplayClient, frozen, entry_data
+) -> None:
+    entry = await setup(hass, entry_data)
+    replay.fail["getSitePowerflow"] = SolarEdgeAuthError("rejected")
+    replay.fail["getSiteDevices"] = SolarEdgeAuthError("rejected")
+    await advance(hass, frozen, 50)
+    hass.config_entries.async_update_entry(entry, options={CONF_POLL_INTERVAL: 30})
+    await hass.async_block_till_done()
+    replay.calls.clear()
+    await advance(hass, frozen, 600, step=30)
+    assert replay.calls == []
+
+
+async def test_device_list_only_while_an_ev_charges(hass: HomeAssistant, replay: ReplayClient, frozen, entry_data) -> None:
+    unplugged = load_fixture("ev-charger-devices.json")["responses"]["unplugged_not_charging"]
+    flow = replay.results["getSitePowerflow"][0]["result"]
+    flow["evCharger"] = {"isActive": True, "connectionStatus": "disconnected", "currentPower": None}
+    replay.answers["getSitePowerflow"] = flow
+    replay.answers["getSiteDevices"] = unplugged
+    entry = await setup(hass, entry_data)
+    assert not entry.runtime_data.sites[SITE].load_controllers
+    await advance(hass, frozen, 50)
+    replay.calls.clear()
+    # Plain polls with the charger unplugged: the powerflow only.
+    await advance(hass, frozen, 180)
+    assert replay.count("getSitePowerflow") == 3
+    assert replay.count("getSiteDevices") == 0
+    assert state(hass, "sensor", f"{SITE}_ev_{EV}_charging_state") == "plugged_out"
+    # The powerflow says it charges: from the next poll on, the devices list too.
+    flow["evCharger"] = {"isActive": True, "connectionStatus": "charging", "currentPower": 7.4}
+    replay.answers["getSiteDevices"] = load_fixture("ev-charger-devices.json")["responses"]["charging"]
+    await advance(hass, frozen, 60)
+    assert state(hass, "switch", f"{SITE}_ev_{EV}_charging") == "on"
+    assert state(hass, "sensor", f"{SITE}_ev_{EV}_power") == "7400"
+    await advance(hass, frozen, 60)
+    assert replay.count("getSiteDevices") == 1
+    assert state(hass, "sensor", f"{SITE}_ev_{EV}_power") == "9509"
+
+
+async def test_empty_equipment_is_asked_hourly(hass: HomeAssistant, replay: ReplayClient, frozen, entry_data) -> None:
+    replay.answers["getSiteEquipment"] = {"inverters": None}
+    await setup(hass, entry_data)
+    await advance(hass, frozen, 1800, step=60)
+    assert replay.count("getSiteEquipment") == 1
+    await advance(hass, frozen, 1900, step=60)
+    assert replay.count("getSiteEquipment") == 2
+
+
+async def test_store_written_only_on_change(hass: HomeAssistant, replay: ReplayClient, frozen, entry_data) -> None:
+    entry = await setup(hass, entry_data)
+    with patch.object(entry.runtime_data._store, "async_delay_save") as save:
+        # Ten minutes of polls and two energy ticks with the same answers.
+        await advance(hass, frozen, 600, step=30)
+        assert save.call_count == 0
+        batteries = replay.results["getSiteBatteries"][0]["result"]
+        batteries["devicesByType"]["BATTERY"][0]["chargeEnergy"] += 1000
+        await advance(hass, frozen, 300, step=30)
+        assert save.call_count == 1

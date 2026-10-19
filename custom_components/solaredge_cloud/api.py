@@ -48,6 +48,11 @@ REQUEST_TIMEOUT = 20
 LOGIN_RETRY_MIN = 60
 LOGIN_RETRY_MAX = 60 * 60
 
+# An endpoint that answers 401 right after a fresh login is refused for this
+# account, not logged out: for this long (seconds) its 401s no longer cost the
+# session and a new login.
+DENIED_FOR = 60 * 60
+
 # Error codes and messages that mean "no data for this period".
 NO_DATA_CODES = ("INVALID_ARGUMENTS", "empty_summary")
 
@@ -125,6 +130,8 @@ class SolarEdgeCloudClient:
         self._login_retry = 0.0
         self._login_blocked_until = 0.0
         self._in_flight: dict[str, asyncio.Future[Any]] = {}
+        # Endpoint path -> clock time until which its 401s are taken as refusals.
+        self._denied: dict[str, float] = {}
 
     @property
     def logged_in(self) -> bool:
@@ -260,18 +267,23 @@ class SolarEdgeCloudClient:
             ) from err
 
         # An expired session answers 401, or redirects to the login page.
+        path = _path(url)
         if status == 401 or 300 <= status < 400 or (
             status == 200 and _looks_like_login_page(text)
         ):
+            refused = retry or self._clock() < self._denied.get(path, 0)
+            if refused:
+                # Still refused with a fresh session: this endpoint is not open to
+                # the account. Its next 401s keep the session (no login per poll).
+                if retry:
+                    _LOGGER.debug("%s: refused after a new login; not logging in for it again for a while", path)
+                    self._denied[path] = self._clock() + DENIED_FOR
+                raise SolarEdgeApiError(f"{path}: unauthorized", status=status, code="UNAUTHORIZED")
             # Only this session expired: a login since this request went out stays.
             if self._cookies is cookies:
                 self._cookies = []
-            if not retry:
-                _LOGGER.debug("%s: session expired, logging in again", _path(url))
-                return await self._request(method, url, params, json_body, retry=True)
-            raise SolarEdgeApiError(
-                f"{_path(url)}: unauthorized", status=status, code="UNAUTHORIZED"
-            )
+            _LOGGER.debug("%s: session expired, logging in again", path)
+            return await self._request(method, url, params, json_body, retry=True)
 
         if status == 429:
             raise SolarEdgeRateLimitError(f"{_path(url)}: rate limited", status=status)
@@ -300,6 +312,7 @@ class SolarEdgeCloudClient:
             )
         if body is None and text.strip():
             raise SolarEdgeApiError(f"{_path(url)}: not JSON", status=status)
+        self._denied.pop(path, None)
         return body
 
     # ------------------------------------------------------------- endpoints

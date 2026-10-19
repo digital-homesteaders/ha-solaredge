@@ -12,6 +12,7 @@ import pytest
 from multidict import CIMultiDict
 
 from custom_components.solaredge_cloud.api import (
+    DENIED_FOR,
     LOGIN_RETRY_MIN,
     SolarEdgeApiError,
     SolarEdgeAuthError,
@@ -253,3 +254,37 @@ async def test_credentials_never_logged(caplog: pytest.LogCaptureFixture) -> Non
         await client2.get_site_powerflow("1")
     assert USERNAME not in caplog.text and PASSWORD not in caplog.text
     assert USERNAME not in str(info.value) and PASSWORD not in str(info.value)
+
+
+async def test_endpoint_refused_for_the_account_does_not_cost_a_login_per_poll() -> None:
+    clock = Clock()
+    devices = ("GET", "/devices")
+    powerflow = capture("getSitePowerflow")
+    client, session = client_for({LOGIN: [LOGIN_OK], devices: [(401, "", [])], POWERFLOW: [(200, powerflow, [])]}, clock)
+    with pytest.raises(SolarEdgeApiError):
+        await client.get_site_devices("1")
+    # One login for the poll, one more to tell expiry from refusal.
+    assert session.count("POST", "/login") == 2
+    for _ in range(5):
+        with pytest.raises(SolarEdgeApiError):
+            await client.get_site_devices("1")
+        assert await client.get_site_powerflow("1") == powerflow
+    # The refusal keeps the session: no new logins.
+    assert session.count("POST", "/login") == 2
+    assert client.logged_in
+    # Asked again as a possible expiry after a while.
+    clock.now += DENIED_FOR
+    with pytest.raises(SolarEdgeApiError):
+        await client.get_site_devices("1")
+    assert session.count("POST", "/login") == 3
+
+
+async def test_a_refused_endpoint_that_answers_again_is_trusted_again() -> None:
+    devices = ("GET", "/devices")
+    client, session = client_for({LOGIN: [LOGIN_OK], devices: [(401, "", []), (401, "", []), (200, {"devices": []}, []), (401, "", []), (200, {}, [])]})
+    with pytest.raises(SolarEdgeApiError):
+        await client.get_site_devices("1")
+    assert await client.get_site_devices("1") == {"devices": []}
+    # A 401 now is an expiry again: one new login and a retry.
+    assert await client.get_site_devices("1") == {}
+    assert session.count("POST", "/login") == 3
