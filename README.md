@@ -123,11 +123,8 @@ Also:
 
 ### HACS (custom repository)
 
-The repository isn't published yet. Once it is on GitHub, replace
-`GITHUB_OWNER` in `custom_components/solaredge_cloud/manifest.json`. Then:
-
 1. In Home Assistant, open **HACS → ⋮ → Custom repositories**.
-2. Add the repository URL with type **Integration**.
+2. Add `https://github.com/digital-homesteaders/ha-solaredge` with type **Integration**.
 3. Find **SolarEdge Cloud (mySolarEdge)** in HACS, then **Download** it.
 4. Restart Home Assistant.
 5. Go to **Settings → Devices & services → Add integration**, search for

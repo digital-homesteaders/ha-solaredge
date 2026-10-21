@@ -4,10 +4,10 @@
   "codeowners": [],
   "config_flow": true,
   "dependencies": [],
-  "documentation": "https://github.com/GITHUB_OWNER/ha-solaredge",
+  "documentation": "https://github.com/digital-homesteaders/ha-solaredge",
   "integration_type": "hub",
   "iot_class": "cloud_polling",
-  "issue_tracker": "https://github.com/GITHUB_OWNER/ha-solaredge/issues",
+  "issue_tracker": "https://github.com/digital-homesteaders/ha-solaredge/issues",
   "loggers": ["custom_components.solaredge_cloud"],
   "requirements": [],
   "version": "0.1.0"
