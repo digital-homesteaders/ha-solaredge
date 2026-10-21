@@ -31,8 +31,29 @@ chargers and home load controllers.
 
 ## How it works
 
-Each config entry is one mySolarEdge account. It has one login session and
-one poll schedule, shared by every device on the account.
+Each config entry is one mySolarEdge account. It has one login and one poll
+schedule, shared by every device on the account.
+
+### Login
+
+SolarEdge retired its old form login on 2026-10-21 (it answers 410 Gone). This
+integration logs in the way the SolarEdge web portal does now, as com.solaredge
+v2.1 does: the OAuth2 login with PKCE on `login.solaredge.com`. It gets an
+access token, which goes with every request, and a refresh token. The access
+token is renewed with the refresh token a minute before it expires, so your
+password is only sent again when the refresh token stops working. The refresh
+token is kept in Home Assistant's storage, so a restart needs no new login
+either.
+
+- **Wrong password:** polling stops and Home Assistant asks you to
+  re-authenticate.
+- **Refused login** (for example a second login step, such as a verification
+  code, which isn't supported): the integration says so, and waits before
+  trying again, from 1 minute up to 1 hour.
+- **SolarEdge or the network failing during the login:** treated as an
+  outage. A server error or rate limit during the login also makes it wait
+  before the next login, because logging in again and again keeps a locked
+  account locked.
 
 - **Every poll (default 60 s):** 1 power flow request per site, for all its
   devices. Sites with EV chargers or load controllers also get 1 devices-list
@@ -66,10 +87,12 @@ These fixes come from a review of the Homey app (1.8.1 and the 2.0.0 rewrite):
    request times out after 20 s.
 3. **Outages:** after an outage or an HTTP 429, polling pauses for twice the
    poll interval, doubling up to 30 minutes. Energy ticks are skipped while
-   polling is paused. A rejected login is kept apart from a SolarEdge or
-   network error. A rejected login stops polling and asks you to log in again
-   (reauth), so the integration never retries a wrong password. On a 401 or a
-   redirect to the login page, it logs in again once and retries.
+   polling is paused. A wrong password is kept apart from a refused login and
+   from a SolarEdge or network error. A wrong password stops polling and asks
+   you to log in again (reauth), so the integration never retries it. On a 401
+   it renews the token once and retries. An endpoint that still answers 401
+   with a new token is left alone for an hour, so it can't cause a new login
+   on every poll.
 4. **Night:** the inverter never goes unavailable at night or while idle. It
    reports 0 W and its status becomes *Sleeping*. The site connectivity sensor
    stays *connected* while the inverters sleep. Entities go unavailable only
@@ -88,7 +111,7 @@ These fixes come from a review of the Homey app (1.8.1 and the 2.0.0 rewrite):
 Also:
 
 - **Sessions:** each account has its own HTTP session without a shared cookie
-  jar, so two accounts never mix sessions.
+  jar, so two accounts never mix logins.
 - **Counters:** lifetime counters never fall. A short or missing answer is
   held rather than counted as a reset, so the Energy dashboard doesn't show
   spikes.
@@ -218,9 +241,9 @@ address, password, inverter serials and vehicle name are redacted.
 
 ## What needs testing
 
-- **The login, against a real account.** The client expects a 302 with
-  session cookies from `/solaredge-apigw/api/login`, as 2.0.0 does. A 302
-  back to a page with `error` in its address is taken as a rejected login.
+- **The OAuth login, against a real account.** It follows com.solaredge
+  v2.1.1. The same flow is confirmed working in the Hubitat port on a real
+  hub, but this Python version has only run against a fake login server.
 - **EV charger and load controller fields with real hardware.** The mapping
   follows 2.0.0 and the real EV/load-controller answers in its tests. The
   battery fields are checked against one real two-battery site.
@@ -250,7 +273,7 @@ and these fixtures:
 
 | Test file | What it covers |
 | --- | --- |
-| `test_api.py` | login, session cookies, rejected login vs outage, login hold-back, re-login on 401 / redirect / HTML, error codes, merged requests, no credentials in logs |
+| `test_api.py` | the OAuth login against a fake login.solaredge.com (PKCE checked, RFC 7636 example), wrong password vs refused login vs outage, login hold-back, token renewal and refresh-token fallback, renewal on 401 / redirect / HTML, error codes, merged requests, no credentials or tokens in logs |
 | `test_mapping.py` | every value against the fixtures, night readings, EV states, load controllers |
 | `test_timing.py` | the energy tick timing and inverter sleep (port of 2.0.0's `test/timing.js`) |
 | `test_meter_totals.py` | the yearly-totals loop: install-year and 10-year floor, "no data", aborting on errors, caching |

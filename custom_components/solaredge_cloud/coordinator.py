@@ -14,6 +14,7 @@ temperatures and the EV charging history.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import logging
 import time
 from dataclasses import dataclass, field
@@ -23,6 +24,7 @@ from zoneinfo import ZoneInfo
 
 import aiohttp
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import CONF_USERNAME
 from homeassistant.core import CALLBACK_TYPE, HomeAssistant, callback
 from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
@@ -179,6 +181,8 @@ class SolarEdgeCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         # Whether the integrated battery energy grew since the last save.
         self._flow_changed = False
         self._was_available = True
+        # Which account a stored refresh token belongs to (the e-mail itself is not stored).
+        self._user_key = hashlib.sha256(str(entry.data.get(CONF_USERNAME, "")).lower().encode()).hexdigest()
         # The time source; tests replace it.
         self.now_ms = lambda: int(time.time() * 1000)
 
@@ -191,6 +195,11 @@ class SolarEdgeCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         self._stored.setdefault("counters", {})
         self._stored.setdefault("units", {})
         self._stored.setdefault("seen", {})
+        # A refresh token from the last run renews the access token without the password.
+        auth = self._stored.get("auth") or {}
+        if auth.get("user") == self._user_key:
+            self.client.set_refresh_token(auth.get("refresh_token"))
+        self.client.on_refresh_token = self._keep_refresh_token
         try:
             sites = await self.client.get_sites()
         except SolarEdgeAuthError as err:
@@ -220,6 +229,15 @@ class SolarEdgeCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
                 errors.append(result)
         if not self.sites and errors:
             raise UpdateFailed(f"Could not read any SolarEdge site: {errors[0]}") from errors[0]
+        self._dirty = True
+        self._save()
+
+    def _keep_refresh_token(self, token: str | None) -> None:
+        """Keep the account's refresh token in the store (dropped: None)."""
+        if token:
+            self._stored["auth"] = {"user": self._user_key, "refresh_token": token}
+        else:
+            self._stored.pop("auth", None)
         self._dirty = True
         self._save()
 

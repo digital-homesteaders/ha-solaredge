@@ -20,7 +20,8 @@
     "error": {
       "invalid_auth": "SolarEdge rejected the e-mail address or password.",
       "cannot_connect": "Could not reach SolarEdge. Try again later.",
-      "unknown": "Unexpected error."
+      "unknown": "Unexpected error.",
+      "login_refused": "SolarEdge did not complete the login, although the password was not rejected. A second login step (such as a verification code) is not supported. Try again later, or check the login in the mySolarEdge app."
     },
     "abort": {
       "already_configured": "This mySolarEdge account is already set up.",

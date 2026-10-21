@@ -13,6 +13,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from custom_components.solaredge_cloud.api import (
     SolarEdgeAuthError,
     SolarEdgeConnectionError,
+    SolarEdgeLoginRefusedError,
     SolarEdgeRateLimitError,
 )
 from custom_components.solaredge_cloud.const import CONF_POLL_INTERVAL, DOMAIN
@@ -49,6 +50,7 @@ async def test_user_flow(hass: HomeAssistant, flow_client) -> None:
     ("error", "key"),
     [
         (SolarEdgeAuthError("x"), "invalid_auth"),
+        (SolarEdgeLoginRefusedError("x"), "login_refused"),
         (SolarEdgeConnectionError("x"), "cannot_connect"),
         (SolarEdgeRateLimitError("x"), "cannot_connect"),
         (RuntimeError("x"), "unknown"),

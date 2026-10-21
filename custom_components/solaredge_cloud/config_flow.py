@@ -12,7 +12,13 @@ from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import selector
 
-from .api import SolarEdgeAuthError, SolarEdgeCloudClient, SolarEdgeConnectionError, SolarEdgeError
+from .api import (
+    SolarEdgeAuthError,
+    SolarEdgeCloudClient,
+    SolarEdgeConnectionError,
+    SolarEdgeError,
+    SolarEdgeLoginRefusedError,
+)
 from .const import (
     CONF_POLL_INTERVAL,
     DEFAULT_POLL_INTERVAL,
@@ -48,6 +54,9 @@ async def _async_check_login(hass: HomeAssistant, username: str, password: str) 
         return None, await client.get_sites()
     except SolarEdgeAuthError:
         return "invalid_auth", []
+    except SolarEdgeLoginRefusedError as err:
+        _LOGGER.warning("SolarEdge refused the login: %s", err)
+        return "login_refused", []
     except SolarEdgeConnectionError:
         return "cannot_connect", []
     except SolarEdgeError as err:

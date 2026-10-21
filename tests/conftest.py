@@ -47,6 +47,11 @@ class ReplayClient:
         self.calls: list[tuple[str, tuple[Any, ...]]] = []
         self.logged_in = True
         self.login_blocked_for = 0.0
+        self.refresh_token: str | None = None
+        self.on_refresh_token: Any = None
+
+    def set_refresh_token(self, token: str | None) -> None:
+        self.refresh_token = token
 
     def _answer(self, method: str, *args: Any, match: dict[str, Any] | None = None) -> Any:
         self.calls.append((method, args))

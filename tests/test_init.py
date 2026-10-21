@@ -19,6 +19,7 @@ from custom_components.solaredge_cloud.api import (
     SolarEdgeApiError,
     SolarEdgeAuthError,
     SolarEdgeConnectionError,
+    SolarEdgeLoginRefusedError,
     SolarEdgeRateLimitError,
 )
 from custom_components.solaredge_cloud.const import BACKOFF_MAX, CONF_POLL_INTERVAL, DOMAIN
@@ -486,3 +487,46 @@ async def test_battery_energy_not_guessed_across_an_outage(hass: HomeAssistant, 
     assert entry.runtime_data.outages == 0
     # Three hours unseen are not counted as 500 W charging.
     assert float(state(hass, "sensor", f"{SITE}_battery_energy_charged")) < 0.3
+
+
+async def test_refresh_token_kept_across_restarts(hass: HomeAssistant, replay: ReplayClient, entry_data) -> None:
+    entry = await setup(hass, entry_data)
+    assert replay.refresh_token is None
+    # The client got a refresh token at login.
+    replay.on_refresh_token("RT9")
+    await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done(wait_background_tasks=True)
+    assert replay.refresh_token == "RT9"
+    # Dropped (no longer accepted): not handed back after the next restart.
+    replay.on_refresh_token(None)
+    replay.refresh_token = None
+    await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done(wait_background_tasks=True)
+    assert replay.refresh_token is None
+    diagnostics = await async_get_config_entry_diagnostics(hass, entry)
+    assert "RT9" not in str(diagnostics)
+
+
+async def test_refresh_token_of_another_account_is_not_used(hass: HomeAssistant, replay: ReplayClient, entry_data) -> None:
+    entry = await setup(hass, entry_data)
+    replay.on_refresh_token("RT9")
+    hass.config_entries.async_update_entry(entry, data={**entry.data, "username": "other@example.com"})
+    await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done(wait_background_tasks=True)
+    replay.refresh_token = None
+    await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done(wait_background_tasks=True)
+    assert replay.refresh_token is None
+
+
+async def test_refused_login_is_no_reauth_and_no_outage(hass: HomeAssistant, replay: ReplayClient, frozen, entry_data) -> None:
+    entry = await setup(hass, entry_data)
+    replay.fail["getSitePowerflow"] = SolarEdgeLoginRefusedError("second factor")
+    replay.fail["getSiteDevices"] = SolarEdgeLoginRefusedError("second factor")
+    await advance(hass, frozen, 50)
+    # Not the password: no reauth. Not an outage: no backoff. (The client holds
+    # its logins back by itself.)
+    assert hass.config_entries.flow.async_progress_by_handler(DOMAIN) == []
+    assert entry.runtime_data.update_interval == timedelta(seconds=60)
+    assert entry.runtime_data.consecutive_failures == 1
+    assert state(hass, "sensor", f"{SITE}_inverter_power") == "5600"
