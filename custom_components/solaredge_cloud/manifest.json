@@ -10,5 +10,5 @@
   "issue_tracker": "https://github.com/digital-homesteaders/ha-solaredge/issues",
   "loggers": ["custom_components.solaredge_cloud"],
   "requirements": [],
-  "version": "0.1.0"
+  "version": "0.2.0"
 }
