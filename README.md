@@ -184,6 +184,7 @@ reported per site.
 | Entity | Source |
 | --- | --- |
 | Grid power | import positive, export negative |
+| Grid status | importing, exporting or idle. Idle is within 100 W either way of 0: a battery holds the grid near 0 W, and the status would otherwise flip nearly every minute. |
 | Consumption, Solar power | the site's power split |
 | Imported, Exported | lifetime grid import and export: the sum of every year since install. `total_increasing`, for the Energy dashboard. They appear once all past years are in. |
 | Imported / Exported this year | this year |
@@ -233,8 +234,18 @@ outage longer than 10 minutes is not counted.
 
 **Settings → Devices & services → SolarEdge Cloud → ⋮ → Download
 diagnostics** gives you the polling state (interval, backoff, failures, energy
-tick timing), the cached meter years and the current values. The e-mail
-address, password, inverter serials and vehicle name are redacted.
+tick timing), the cached meter years, the current values, and SolarEdge's own
+latest answers (power flow, devices list, batteries, inverters), each asked for
+once when you download. An answer that looks like old data says why. The
+e-mail address, password, serial numbers, vehicle and network identifiers are
+redacted. Send this with a bug report about a value that looks wrong.
+
+### Log messages
+
+One failing request doesn't fail the poll, so it would otherwise go unnoticed.
+The log says it once when a request starts failing, and once when it works
+again. It does the same when SolarEdge serves old data: the power flow not
+real time or not communicating, or a devices list not updated for 10 minutes.
 
 ## What needs testing
 

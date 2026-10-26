@@ -163,6 +163,9 @@ class SolarEdgeCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         self._energy_count = 0
         self._unsub_energy: CALLBACK_TYPE | None = None
         self._solar_idle: dict[str, bool] = {}
+        # Request -> why it is failing or looks stale, until it is fine again.
+        self._failing: dict[str, str] = {}
+        self._stale: dict[str, str] = {}
         self._meter_tasks: dict[str, asyncio.Task[None]] = {}
         # The latest yearly totals per site, merged into every poll's values.
         self._meter_values: dict[str, dict[str, Any]] = {}
@@ -454,13 +457,14 @@ class SolarEdgeCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
                 raise error
         if errors and len(errors) == len(results):
             raise errors[0]
-        for error in errors:
-            _LOGGER.debug("Part of a SolarEdge poll failed: %s", error)
 
         by_site: dict[str, dict[str, Any]] = seeded
         for (site, kind, _), result in zip(requests, results, strict=True):
+            what = f"{kind} for site {site.site_id}"
+            self._note_failure(what, result if isinstance(result, BaseException) else None)
             if not isinstance(result, BaseException):
                 by_site.setdefault(site.site_id, {})[kind] = result
+                self._note_stale(what, mapping.stale_reason(kind, result, self.now_ms()))
         for site in self.sites.values():
             answers = by_site.get(site.site_id, {})
             if powerflow := answers.get("powerflow"):
@@ -502,18 +506,44 @@ class SolarEdgeCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
             for rid in site.ev_chargers
         )
 
-    async def _optional(self, request: Any) -> Any:
+    def _note_failure(self, what: str, error: BaseException | None) -> None:
+        """Warn once when `what` starts failing, and say once when it works again.
+
+        One failing request doesn't fail the poll, so nothing else would show it.
+        """
+        if error is not None:
+            if what not in self._failing:
+                self._failing[what] = str(error)
+                _LOGGER.warning("SolarEdge %s failed: %s (logged again only once it works)", what, error)
+        elif self._failing.pop(what, None) is not None:
+            _LOGGER.info("SolarEdge %s works again", what)
+
+    def _note_stale(self, what: str, why: str | None) -> None:
+        """Warn once when an answer looks like old data, and say once when it is live again."""
+        if why:
+            if what not in self._stale:
+                self._stale[what] = why
+                _LOGGER.warning("SolarEdge %s looks stale: %s", what, why)
+        elif self._stale.pop(what, None) is not None:
+            _LOGGER.info("SolarEdge %s is live again", what)
+
+    async def _optional(self, what: str, request: Any, kind: str | None = None) -> Any:
         """An energy-tick reading: a failure leaves the values as they are.
 
-        A rejected login and a rate limit still end the poll.
+        A rejected login and a rate limit still end the poll. `kind` names the
+        stale check of the answer, if it has one.
         """
         try:
-            return await request
+            answer = await request
         except (SolarEdgeAuthError, SolarEdgeRateLimitError):
             raise
         except SolarEdgeError as err:
-            _LOGGER.debug("SolarEdge reading failed: %s", err)
+            self._note_failure(what, err)
             return None
+        self._note_failure(what, None)
+        if kind:
+            self._note_stale(what, mapping.stale_reason(kind, answer, self.now_ms()))
+        return answer
 
     async def _energy(self, site: SiteInfo, data: dict[str, dict[str, Any]], slow: bool) -> None:
         """The energy tick's readings of one site."""
@@ -522,14 +552,14 @@ class SolarEdgeCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         if not site.inverter_serials and now_ms - self._equipment_checked.get(sid, 0) >= EQUIPMENT_RECHECK_MS:
             # A site without inverters in its equipment list is asked again hourly, not every tick.
             self._equipment_checked[sid] = now_ms
-            equipment = await self._optional(self.client.get_site_equipment(sid))
+            equipment = await self._optional(f"equipment for site {sid}", self.client.get_site_equipment(sid))
             site.inverter_serials = mapping.equipment_serials(equipment)
         serials = site.inverter_serials
 
         overview, information, battery_answer = await asyncio.gather(
-            self._optional(self.client.get_site_energy_overview(sid)),
-            self._optional(self.client.get_inverters_information(serials)) if serials else _none(),
-            self._optional(self.client.get_site_batteries(sid)) if site.has_battery else _none(),
+            self._optional(f"energy overview for site {sid}", self.client.get_site_energy_overview(sid)),
+            self._optional(f"inverters for site {sid}", self.client.get_inverters_information(serials)) if serials else _none(),
+            self._optional(f"batteries for site {sid}", self.client.get_site_batteries(sid)) if site.has_battery else _none(),
         )
         self._merge(data, site, KIND_INVERTER, mapping.inverter_energy(overview))
         live = mapping.inverter_live(information)
@@ -557,10 +587,10 @@ class SolarEdgeCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         today = datetime.fromtimestamp(now_ms / 1000, tz=_zone(site.timezone)).date().isoformat()
         rids = list(site.ev_chargers)
         communication, alerts, by_inverter, *histories = await asyncio.gather(
-            self._optional(self.client.get_site_communication(sid)),
-            self._optional(self.client.get_site_alerts(sid)),
-            self._optional(self.client.get_site_energy_by_inverter(sid, today, serials)) if serials else _none(),
-            *(self._optional(self.client.get_appliance_sessions_history(sid, rid)) for rid in rids),
+            self._optional(f"communication for site {sid}", self.client.get_site_communication(sid)),
+            self._optional(f"alerts for site {sid}", self.client.get_site_alerts(sid)),
+            self._optional(f"energy by inverter for site {sid}", self.client.get_site_energy_by_inverter(sid, today, serials)) if serials else _none(),
+            *(self._optional(f"charging history of {rid} for site {sid}", self.client.get_appliance_sessions_history(sid, rid)) for rid in rids),
         )
         self._merge(data, site, KIND_SITE, mapping.site_values(communication, alerts, asleep))
         if by_inverter is not None:
@@ -712,6 +742,36 @@ class SolarEdgeCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         except SolarEdgeError as err:
             raise HomeAssistantError(f"SolarEdge did not accept the command: {err}") from err
         await self.async_request_refresh()
+
+    async def raw_answers(self) -> dict[str, Any]:
+        """SolarEdge's own answers for the diagnostics download, redacted.
+
+        Each one is asked for once, outside the poll; a failure is reported in
+        place of the answer. An answer that looks like old data says why.
+        """
+        out: dict[str, Any] = {}
+        for sid, site in self.sites.items():
+            requests: dict[str, Any] = {
+                "powerflow": self.client.get_site_powerflow(sid),
+                "devices": self.client.get_site_devices(sid),
+            }
+            if site.has_battery:
+                requests["batteries"] = self.client.get_site_batteries(sid)
+            if site.inverter_serials:
+                requests["inverters"] = self.client.get_inverters_information(site.inverter_serials)
+            answers = await asyncio.gather(*requests.values(), return_exceptions=True)
+            raw: dict[str, Any] = {}
+            for kind, answer in zip(requests, answers, strict=True):
+                if isinstance(answer, BaseException):
+                    if not isinstance(answer, SolarEdgeError):
+                        raise answer
+                    raw[kind] = {"error": str(answer)}
+                    continue
+                raw[kind] = {"answer": mapping.redact_raw(answer)}
+                if why := mapping.stale_reason(kind, answer, self.now_ms()):
+                    raw[kind]["looks_stale"] = why
+            out[sid] = raw
+        return out
 
     def diagnostics(self) -> dict[str, Any]:
         """State for the diagnostics download (no credentials, no serials)."""

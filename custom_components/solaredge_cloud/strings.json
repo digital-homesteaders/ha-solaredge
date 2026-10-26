@@ -108,6 +108,14 @@
       "grid_power": {
         "name": "Grid power"
       },
+      "grid_status": {
+        "name": "Grid status",
+        "state": {
+          "import": "Importing",
+          "export": "Exporting",
+          "idle": "Idle"
+        }
+      },
       "load_power": {
         "name": "Consumption"
       },

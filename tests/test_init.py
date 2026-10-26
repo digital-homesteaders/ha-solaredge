@@ -334,6 +334,43 @@ async def test_diagnostics_redact_credentials(hass: HomeAssistant, replay: Repla
     assert diagnostics["coordinator"]["poll_interval"] == 60
 
 
+async def test_diagnostics_have_raw_answers(hass: HomeAssistant, replay: ReplayClient, entry_data) -> None:
+    entry = await setup(hass, entry_data)
+    raw = (await async_get_config_entry_diagnostics(hass, entry))["raw"]
+    site = raw[SITE]
+    assert {"powerflow", "devices", "batteries", "inverters"} <= set(site)
+    assert "answer" in site["powerflow"]
+    replay.fail["getSiteBatteries"] = SolarEdgeConnectionError("down")
+    raw = (await async_get_config_entry_diagnostics(hass, entry))["raw"]
+    assert raw[SITE]["batteries"] == {"error": "down"}
+    assert "answer" in raw[SITE]["devices"]
+
+
+async def test_failing_request_warned_once(hass: HomeAssistant, replay: ReplayClient, frozen, entry_data, caplog) -> None:
+    await setup(hass, entry_data)
+    replay.fail["getSiteDevices"] = SolarEdgeApiError("x", status=404)
+    await advance(hass, frozen, 180)
+    await advance(hass, frozen, 180)
+    assert caplog.text.count("devices for site") == 1
+    assert "failed" in caplog.text
+    del replay.fail["getSiteDevices"]
+    await advance(hass, frozen, 120)
+    assert "devices for site" in caplog.text and "works again" in caplog.text
+
+
+async def test_stale_answer_warned_once(hass: HomeAssistant, replay: ReplayClient, frozen, entry_data, caplog) -> None:
+    await setup(hass, entry_data)
+    flow = load_fixture("synthetic-site.json")
+    answer = next(c["result"] for c in flow["calls"] if c["method"] == "getSitePowerflow")
+    replay.answers["getSitePowerflow"] = {**answer, "isRealTime": False}
+    await advance(hass, frozen, 120)
+    await advance(hass, frozen, 120)
+    assert caplog.text.count("looks stale: isRealTime false") == 1
+    replay.answers["getSitePowerflow"] = answer
+    await advance(hass, frozen, 120)
+    assert "powerflow for site" in caplog.text and "is live again" in caplog.text
+
+
 async def test_credentials_not_logged(hass: HomeAssistant, replay: ReplayClient, frozen, entry_data, caplog) -> None:
     caplog.set_level("DEBUG")
     await setup(hass, entry_data)

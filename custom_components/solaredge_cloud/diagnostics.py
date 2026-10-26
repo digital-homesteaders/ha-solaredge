@@ -21,6 +21,7 @@ async def async_get_config_entry_diagnostics(
         {
             "entry": {"data": dict(entry.data), "options": dict(entry.options)},
             "coordinator": entry.runtime_data.diagnostics(),
+            "raw": await entry.runtime_data.raw_answers(),
         },
         TO_REDACT,
     )

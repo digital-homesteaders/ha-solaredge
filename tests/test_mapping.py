@@ -87,8 +87,8 @@ def test_fahrenheit() -> None:
 
 
 def test_meter() -> None:
-    assert mapping.meter_power(result("getSitePowerflow")) == {"grid_power": -1200, "load_power": 800, "solar_power": 5600}
-    assert mapping.meter_power({"grid": {"isActive": True, "currentPower": None}}) == {"grid_power": 0}
+    assert mapping.meter_power(result("getSitePowerflow")) == {"grid_power": -1200, "grid_status": "export", "load_power": 800, "solar_power": 5600}
+    assert mapping.meter_power({"grid": {"isActive": True, "currentPower": None}}) == {"grid_power": 0, "grid_status": "idle"}
     assert mapping.year_totals(result("getSiteMeasurements", endDate="2025-12-31")) == {"imported": 1800000, "exported": 3100000}
     assert mapping.year_totals({"summary": None}) is None
     assert mapping.year_totals({"summary": {"import": None, "export": None}}) == {"imported": 0, "exported": 0, "unknown": True}
@@ -209,3 +209,35 @@ def test_real_two_battery_answer() -> None:
 def test_battery_flow(previous: float, current: float, charged: float, discharged: float) -> None:
     got = mapping.battery_flow_kwh(previous, current, 3600)
     assert got == (pytest.approx(charged), pytest.approx(discharged))
+
+
+@pytest.mark.parametrize(
+    ("grid", "status"),
+    [
+        ({"currentPower": 0.101, "status": "import"}, "import"),
+        ({"currentPower": 0.1, "status": "import"}, "idle"),
+        ({"currentPower": 0.05, "status": "export"}, "idle"),
+        ({"currentPower": 0.1, "status": "export"}, "idle"),
+        ({"currentPower": 0.15, "status": "export"}, "export"),
+    ],
+)
+def test_grid_status_idle_within_100_w(grid: dict[str, Any], status: str) -> None:
+    assert mapping.meter_power({"grid": grid})["grid_status"] == status
+
+
+def test_stale_reason() -> None:
+    now = 1_000_000_000_000
+    assert mapping.stale_reason("powerflow", {"isRealTime": True, "isCommunicating": True}, now) is None
+    assert mapping.stale_reason("powerflow", {"isRealTime": False, "isCommunicating": False}, now) == "isRealTime false, isCommunicating false"
+    assert mapping.stale_reason("devices", {"isUpdated": True, "fieldLastUpdateTS": now - 5 * 60000}, now) is None
+    assert mapping.stale_reason("devices", {"isUpdated": False, "fieldLastUpdateTS": now - 15 * 60000}, now) == "isUpdated false, last updated 15 min ago"
+    assert mapping.stale_reason("batteries", {"isUpdated": False}, now) is None
+    assert mapping.stale_reason("powerflow", None, now) is None
+
+
+def test_redact_raw() -> None:
+    raw = {"a": [{"macAddress": "x", "serialNumber": "S1", "vehicle": {"id": 1}, "kept": 1}], "inverterSerials": ["S1"]}
+    assert mapping.redact_raw(raw) == {
+        "a": [{"macAddress": "**REDACTED**", "serialNumber": "**REDACTED**", "vehicle": "**REDACTED**", "kept": 1}],
+        "inverterSerials": "**REDACTED**",
+    }

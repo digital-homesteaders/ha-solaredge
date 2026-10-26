@@ -14,6 +14,7 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping, Sequence
 from typing import Any
 
+from .const import GRID_IDLE_W, STALE_DATA_MS
 from .timing import is_asleep
 
 # energyOverview timePeriod -> key (energy in Wh)
@@ -38,6 +39,7 @@ INVERTER_STATUSES = [
 ]
 
 BATTERY_STATES = ["charging", "discharging", "idle"]
+GRID_STATES = ["import", "export", "idle"]
 
 # Values that a None clears instead of leaving the last one: an unknown status,
 # and no optimizer temperature yet today (before sunrise).
@@ -289,12 +291,52 @@ def meter_power(powerflow: Any) -> dict[str, Any]:
             power = -power
         values["grid_power"] = power
     elif "currentPower" in grid and grid.get("isActive"):
-        values["grid_power"] = 0
+        values["grid_power"] = power = 0
+    if power is not None:
+        values["grid_status"] = "import" if power > GRID_IDLE_W else "export" if power < -GRID_IDLE_W else "idle"
     if "consumption" in powerflow:
         values["load_power"] = watts((powerflow["consumption"] or {}).get("currentPower")) or 0
     if "solarProduction" in powerflow:
         values["solar_power"] = watts((powerflow["solarProduction"] or {}).get("currentPower")) or 0
     return values
+
+
+def stale_reason(kind: str, answer: Any, now_ms: int) -> str | None:
+    """Why an answer looks like old data, or None.
+
+    The powerflow is not real time, or the devices list was not updated lately.
+    """
+    if not isinstance(answer, Mapping):
+        return None
+    why: list[str] = []
+    if kind == "powerflow":
+        if answer.get("isRealTime") is False:
+            why.append("isRealTime false")
+        if answer.get("isCommunicating") is False:
+            why.append("isCommunicating false")
+    elif kind == "devices":
+        if answer.get("isUpdated") is False:
+            why.append("isUpdated false")
+        updated = answer.get("fieldLastUpdateTS")
+        if isinstance(updated, (int, float)) and not isinstance(updated, bool) and now_ms - updated > STALE_DATA_MS:
+            why.append(f"last updated {int((now_ms - updated) // 60000)} min ago")
+    return ", ".join(why) or None
+
+
+# Keys left out of raw answers: vehicle and network identifiers, serial numbers.
+RAW_REDACT = frozenset({"macaddress", "physicalid", "siteapplianceuuid", "rfidcardslistsupported", "vehicle"})
+
+
+def redact_raw(value: Any) -> Any:
+    """A copy of a raw answer without vehicle and network identifiers or serials."""
+    if isinstance(value, Mapping):
+        return {
+            key: "**REDACTED**" if str(key).lower() in RAW_REDACT or "serial" in str(key).lower() else redact_raw(item)
+            for key, item in value.items()
+        }
+    if isinstance(value, list):
+        return [redact_raw(item) for item in value]
+    return value
 
 
 def year_totals(result: Any) -> dict[str, Any] | None:

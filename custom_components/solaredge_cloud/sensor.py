@@ -26,7 +26,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from .const import KIND_BATTERY, KIND_EV, KIND_HLC, KIND_INVERTER, KIND_METER, KIND_SITE
 from .coordinator import SolarEdgeConfigEntry
 from .entity import SolarEdgeEntity, SolarEdgeEntityDescription, async_add_when_seen, entities_for
-from .mapping import BATTERY_STATES, EV_CHARGING_STATES, INVERTER_STATUSES
+from .mapping import BATTERY_STATES, EV_CHARGING_STATES, GRID_STATES, INVERTER_STATUSES
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -114,6 +114,13 @@ SENSORS: tuple[SolarEdgeSensorDescription, ...] = (
     ),
     # meter
     _power(KIND_METER, "grid_power", translation_key="grid_power"),
+    SolarEdgeSensorDescription(
+        kind=KIND_METER,
+        key="grid_status",
+        translation_key="grid_status",
+        device_class=SensorDeviceClass.ENUM,
+        options=GRID_STATES,
+    ),
     _power(KIND_METER, "load_power", translation_key="load_power"),
     _power(KIND_METER, "solar_power", translation_key="solar_power"),
     _energy(KIND_METER, "energy_imported"),
