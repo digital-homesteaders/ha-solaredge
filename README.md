@@ -5,7 +5,7 @@ grid meter and the site's power split, batteries, SolarEdge EV chargers and
 home load controllers (smart relays). It logs in with your **mySolarEdge
 e-mail and password**. You don't need an API key.
 
-> **Status: v0.1, not yet tested against a real SolarEdge account.** It is a
+> **Status: v0.2, not yet tested against a real SolarEdge account.** It is a
 > port of the [com.solaredge](https://github.com/gruijter/com.solaredge) v2.0.0
 > rewrite for Homey by Robin de Gruijter. The tests run against that project's
 > captured SolarEdge answers, on Home Assistant 2026.10. `hacs.json` asks for
@@ -246,6 +246,26 @@ One failing request doesn't fail the poll, so it would otherwise go unnoticed.
 The log says it once when a request starts failing, and once when it works
 again. It does the same when SolarEdge serves old data: the power flow not
 real time or not communicating, or a devices list not updated for 10 minutes.
+
+## Release notes
+
+### 0.2.0
+
+Brings the integration level with the Hubitat port (hubitat-solaredge).
+
+- **Grid status** sensor on the meter: importing, exporting or idle (within 100 W of 0).
+- **Warnings in the log** when a request starts failing, and when SolarEdge serves old
+  data, each once, with a note when it's back. Nothing is warned at night or while idle.
+- **Diagnostics** now include SolarEdge's own latest answers (power flow, devices,
+  batteries, inverters), with serials, vehicle and network identifiers redacted.
+  Nothing is requested while polling is paused.
+- Not included: the solar forecast. Home Assistant has its own Forecast.Solar and
+  Open-Meteo integrations.
+
+### 0.1.0
+
+First release: sites, inverters, meters, batteries, EV chargers and load controllers,
+with the new OAuth login.
 
 ## What needs testing
 
