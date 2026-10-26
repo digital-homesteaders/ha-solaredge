@@ -184,7 +184,7 @@ reported per site.
 | Entity | Source |
 | --- | --- |
 | Grid power | import positive, export negative |
-| Grid status | importing, exporting or idle. Idle is within 100 W either way of 0: a battery holds the grid near 0 W, and the status would otherwise flip nearly every minute. |
+| Grid status | importing, exporting or idle. Idle is within 100 W either way of 0: a battery holds the grid within a few watts of 0, so the status doesn't flip with every reading. A grid that hovers right at 100 W can still flip. |
 | Consumption, Solar power | the site's power split |
 | Imported, Exported | lifetime grid import and export: the sum of every year since install. `total_increasing`, for the Energy dashboard. They appear once all past years are in. |
 | Imported / Exported this year | this year |

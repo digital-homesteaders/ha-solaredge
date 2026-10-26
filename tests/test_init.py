@@ -13,6 +13,7 @@ from homeassistant.const import STATE_UNAVAILABLE
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
+from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import MockConfigEntry, async_fire_time_changed
 
 from custom_components.solaredge_cloud.api import (
@@ -369,6 +370,38 @@ async def test_stale_answer_warned_once(hass: HomeAssistant, replay: ReplayClien
     replay.answers["getSitePowerflow"] = answer
     await advance(hass, frozen, 120)
     assert "powerflow for site" in caplog.text and "is live again" in caplog.text
+
+
+async def test_stale_not_warned_while_idle(hass: HomeAssistant, replay: ReplayClient, frozen, entry_data, caplog) -> None:
+    await setup(hass, entry_data)
+    answer = next(c["result"] for c in load_fixture("synthetic-site.json")["calls"] if c["method"] == "getSitePowerflow")
+    night = {**answer, "isRealTime": False, "isCommunicating": False, "solarProduction": {"isActive": False, "currentPower": 0}}
+    replay.answers["getSitePowerflow"] = night
+    # The fixture's devices list is older than its frozen clock; make it current.
+    devices = next(c["result"] for c in load_fixture("synthetic-site.json")["calls"] if c["method"] == "getSiteDevices")
+    replay.answers["getSiteDevices"] = lambda *_: {**devices, "fieldLastUpdateTS": int(dt_util.utcnow().timestamp() * 1000)}
+    await advance(hass, frozen, 240)
+    assert "looks stale" not in caplog.text
+
+
+async def test_all_requests_failing_still_noted(hass: HomeAssistant, replay: ReplayClient, frozen, entry_data, caplog) -> None:
+    await setup(hass, entry_data)
+    replay.fail["getSitePowerflow"] = SolarEdgeConnectionError("down")
+    replay.fail["getSiteDevices"] = SolarEdgeConnectionError("down")
+    await advance(hass, frozen, 50)
+    assert "powerflow for site" in caplog.text and "failed: down" in caplog.text
+
+
+async def test_raw_answers_not_asked_while_paused(hass: HomeAssistant, replay: ReplayClient, frozen, entry_data) -> None:
+    entry = await setup(hass, entry_data)
+    replay.fail["getSitePowerflow"] = SolarEdgeConnectionError("down")
+    replay.fail["getSiteDevices"] = SolarEdgeConnectionError("down")
+    await advance(hass, frozen, 50)
+    assert entry.runtime_data.outages
+    replay.calls.clear()
+    raw = (await async_get_config_entry_diagnostics(hass, entry))["raw"]
+    assert raw == {"skipped": "polling is paused; no requests sent"}
+    assert replay.calls == []
 
 
 async def test_credentials_not_logged(hass: HomeAssistant, replay: ReplayClient, frozen, entry_data, caplog) -> None:

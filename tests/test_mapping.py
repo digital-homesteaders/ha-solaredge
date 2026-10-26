@@ -231,13 +231,30 @@ def test_stale_reason() -> None:
     assert mapping.stale_reason("powerflow", {"isRealTime": False, "isCommunicating": False}, now) == "isRealTime false, isCommunicating false"
     assert mapping.stale_reason("devices", {"isUpdated": True, "fieldLastUpdateTS": now - 5 * 60000}, now) is None
     assert mapping.stale_reason("devices", {"isUpdated": False, "fieldLastUpdateTS": now - 15 * 60000}, now) == "isUpdated false, last updated 15 min ago"
+    old = {"isUpdated": True, "fieldLastUpdateTS": now - 60 * 60000}
+    assert mapping.stale_reason("devices", old, now, check_age=False) is None
     assert mapping.stale_reason("batteries", {"isUpdated": False}, now) is None
     assert mapping.stale_reason("powerflow", None, now) is None
 
 
-def test_redact_raw() -> None:
-    raw = {"a": [{"macAddress": "x", "serialNumber": "S1", "vehicle": {"id": 1}, "kept": 1}], "inverterSerials": ["S1"]}
-    assert mapping.redact_raw(raw) == {
-        "a": [{"macAddress": "**REDACTED**", "serialNumber": "**REDACTED**", "vehicle": "**REDACTED**", "kept": 1}],
-        "inverterSerials": "**REDACTED**",
+def test_redact_raw_keeps_readings_and_hides_serials() -> None:
+    inverters = {"serialToLiveData": {"7E0001": {"pAc_W": 5600, "name": "Inverter 7E0001"}}, "inverterSerials": ["7E0001"]}
+    assert mapping.redact_raw(inverters) == {
+        "serialToLiveData": {"**REDACTED**": {"pAc_W": 5600, "name": "Inverter **REDACTED**"}},
+        "inverterSerials": ["**REDACTED**"],
     }
+    # Serials the site knows are hidden even where the answer doesn't name them as such.
+    assert mapping.redact_raw({"x": {"7E0002": 1}}, ["7E0002"]) == {"x": {"**REDACTED**": 1}}
+
+
+def test_redact_raw_real_answers() -> None:
+    batteries = load_fixture("batteries-two.json")["response"]
+    text = str(mapping.redact_raw(batteries))
+    for secret in ("INV00001", "BAT00001", "BAT00002"):
+        assert secret not in text
+    assert "9700.0" in text
+    devices = next(iter(load_fixture("ev-charger-devices.json")["responses"].values()))
+    text = str(mapping.redact_raw(devices))
+    for secret in ("05F60667", "Ioniq", "IONIQ 6", "XXX-0000"):
+        assert secret not in text
+    assert "EV Charger" in text

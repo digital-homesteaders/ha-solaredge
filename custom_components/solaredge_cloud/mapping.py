@@ -301,10 +301,11 @@ def meter_power(powerflow: Any) -> dict[str, Any]:
     return values
 
 
-def stale_reason(kind: str, answer: Any, now_ms: int) -> str | None:
+def stale_reason(kind: str, answer: Any, now_ms: int, check_age: bool = True) -> str | None:
     """Why an answer looks like old data, or None.
 
-    The powerflow is not real time, or the devices list was not updated lately.
+    The powerflow is not real time, or the devices list was not updated lately
+    (`check_age` False leaves that out: an idle charger's list doesn't change).
     """
     if not isinstance(answer, Mapping):
         return None
@@ -318,24 +319,58 @@ def stale_reason(kind: str, answer: Any, now_ms: int) -> str | None:
         if answer.get("isUpdated") is False:
             why.append("isUpdated false")
         updated = answer.get("fieldLastUpdateTS")
-        if isinstance(updated, (int, float)) and not isinstance(updated, bool) and now_ms - updated > STALE_DATA_MS:
+        if check_age and isinstance(updated, (int, float)) and not isinstance(updated, bool) and now_ms - updated > STALE_DATA_MS:
             why.append(f"last updated {int((now_ms - updated) // 60000)} min ago")
     return ", ".join(why) or None
 
 
-# Keys left out of raw answers: vehicle and network identifiers, serial numbers.
-RAW_REDACT = frozenset({"macaddress", "physicalid", "siteapplianceuuid", "rfidcardslistsupported", "vehicle"})
+# Keys whose values are left out of raw answers, any case: vehicle and network identifiers.
+RAW_REDACT = frozenset(
+    {"macaddress", "physicalid", "siteapplianceuuid", "rfidcardslistsupported", "vehicle", "appliancedata", "portiasn"}
+)
+REDACTED = "**REDACTED**"
 
 
-def redact_raw(value: Any) -> Any:
-    """A copy of a raw answer without vehicle and network identifiers or serials."""
+def _serials(value: Any, found: set[str]) -> None:
+    """Collect the serial numbers an answer names: strings under a key with "serial" in it."""
+    if isinstance(value, Mapping):
+        for key, item in value.items():
+            if "serial" in str(key).lower() or str(key).lower() == "portiasn":
+                items = item if isinstance(item, list) else [item]
+                found.update(entry for entry in items if isinstance(entry, str) and entry)
+            _serials(item, found)
+    elif isinstance(value, list):
+        for item in value:
+            _serials(item, found)
+
+
+def redact_raw(value: Any, known_serials: Iterable[str] = ()) -> Any:
+    """A copy of a raw answer without serials, the vehicle and network identifiers.
+
+    Serials go wherever they appear (in names and as keys of the live readings),
+    so the readings themselves stay.
+    """
+    serials = set(known_serials)
+    _serials(value, serials)
+    return _redact(value, sorted(serials, key=len, reverse=True))
+
+
+def _scrub(text: str, serials: list[str]) -> str:
+    for serial in serials:
+        text = text.replace(serial, REDACTED)
+    return text
+
+
+def _redact(value: Any, serials: list[str]) -> Any:
     if isinstance(value, Mapping):
         return {
-            key: "**REDACTED**" if str(key).lower() in RAW_REDACT or "serial" in str(key).lower() else redact_raw(item)
+            _scrub(str(key), serials): REDACTED if str(key).lower() in RAW_REDACT else _redact(item, serials)
             for key, item in value.items()
         }
     if isinstance(value, list):
-        return [redact_raw(item) for item in value]
+        return [_redact(item, serials) for item in value]
+    if isinstance(value, str):
+        return _scrub(value, serials)
     return value
 
 
