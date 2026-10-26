@@ -130,8 +130,8 @@ Also:
 5. Go to **Settings → Devices & services → Add integration**, search for
    **SolarEdge Cloud**, and enter your mySolarEdge e-mail and password.
 
-HACS needs no account or token for a public repository. It needs HACS 1.32 or newer
-and Home Assistant 2025.2 or newer.
+HACS needs no account or token for a public repository, but it can't use a private one.
+It needs Home Assistant 2025.2 or newer.
 
 **Updating:** HACS shows an update when the repository has a new release. Open the
 integration in HACS and choose **Update information** to check now, then **Download**
