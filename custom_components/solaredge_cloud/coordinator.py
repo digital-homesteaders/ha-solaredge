@@ -18,7 +18,7 @@ import hashlib
 import logging
 import time
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -767,6 +767,40 @@ class SolarEdgeCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         return round(reading + offset, 3)
 
     # ------------------------------------------------------------ commands
+
+    def reserve_duration(self, site_id: str) -> str:
+        """The duration a new backup reserve gets (a RESERVE_DURATIONS key); unlimited until chosen."""
+        chosen = self._stored.get("reserve_duration", {}).get(site_id)
+        return chosen if chosen in mapping.RESERVE_DURATIONS else "unlimited"
+
+    def set_reserve_duration(self, site_id: str, duration: str) -> None:
+        """Remember the duration for the next backup reserve (kept across restarts)."""
+        self._stored.setdefault("reserve_duration", {})[site_id] = duration
+        self._store.async_delay_save(lambda: self._stored, 10)
+        self.async_update_listeners()
+
+    async def async_set_backup_reserve(self, site_id: str, percent: int) -> None:
+        """Set the backup reserve for the chosen duration, and show it right away.
+
+        SolarEdge's battery answer catches up about 20 s later; the energy tick
+        reads it within 5 minutes.
+        """
+        site = self.sites[site_id]
+        values = (self.data or {}).get(device_key(site_id, KIND_BATTERY), {})
+        if values.get("backup_reserve_editable") is False:
+            raise HomeAssistantError("SolarEdge doesn't let this site change its backup reserve")
+        hours = mapping.RESERVE_DURATIONS[self.reserve_duration(site_id)]
+        try:
+            await self.client.set_backup_reserve(site_id, percent, hours)
+        except SolarEdgeAuthError as err:
+            self.config_entry.async_start_reauth(self.hass)
+            raise HomeAssistantError("SolarEdge rejected the login") from err
+        except SolarEdgeError as err:
+            raise HomeAssistantError(f"SolarEdge did not accept the backup reserve: {err}") from err
+        expires = datetime.fromtimestamp(self.now_ms() / 1000 + hours * 3600, tz=UTC) if hours else None
+        data = dict(self.data or {})
+        self._merge(data, site, KIND_BATTERY, {"backup_reserve": float(percent), "backup_reserve_expires": expires})
+        self.async_set_updated_data(data)
 
     async def async_set_activation(self, site_id: str, reporter_id: str, state: dict[str, Any]) -> None:
         """Switch an EV charger or load controller, then poll."""

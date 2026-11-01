@@ -113,6 +113,11 @@ class ReplayClient:
     async def get_appliance_sessions_history(self, site_id: str, reporter_id: str) -> Any:
         return self._answer("getSiteDeviceApplianceSessionsHistory", site_id, reporter_id)
 
+    async def set_backup_reserve(self, site_id: str, percent: int, hours: int) -> None:
+        self.calls.append(("setBackupReserve", (site_id, percent, hours)))
+        if "setBackupReserve" in self.fail:
+            raise self.fail["setBackupReserve"]
+
     async def set_activation_state(self, site_id: str, reporter_id: str, state: dict[str, Any]) -> Any:
         self.calls.append(("setActivationState", (site_id, reporter_id, state)))
         if "setActivationState" in self.fail:

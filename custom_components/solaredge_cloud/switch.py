@@ -42,7 +42,7 @@ class SolarEdgeChargingSwitch(SolarEdgeEntity, SwitchEntity):
     @property
     def is_on(self) -> bool | None:
         """Whether the charger is charging."""
-        return self.value
+        return self.reading
 
     async def _set(self, on: bool) -> None:
         assert self.reporter_id is not None

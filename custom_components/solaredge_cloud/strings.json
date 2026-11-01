@@ -66,6 +66,15 @@
           "off": "Off",
           "auto": "Automatic"
         }
+      },
+      "backup_reserve_duration": {
+        "name": "Backup reserve duration",
+        "state": {
+          "unlimited": "Unlimited",
+          "24_hours": "24 hours",
+          "48_hours": "48 hours",
+          "72_hours": "72 hours"
+        }
       }
     },
     "sensor": {
@@ -192,19 +201,24 @@
           "other": "Other"
         }
       },
-      "backup_reserve": {
-        "name": "Backup reserve"
-      },
       "backup_reserve_limit": {
         "name": "Backup reserve limit"
       },
       "weather_guard_status": {
         "name": "Weather Guard status"
+      },
+      "backup_reserve_expires": {
+        "name": "Backup reserve until"
       }
     },
     "switch": {
       "charging": {
         "name": "Charging"
+      }
+    },
+    "number": {
+      "backup_reserve": {
+        "name": "Backup reserve"
       }
     }
   }

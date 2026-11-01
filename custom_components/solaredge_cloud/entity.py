@@ -114,14 +114,14 @@ class SolarEdgeEntity(CoordinatorEntity[SolarEdgeCoordinator]):
         return (self.coordinator.data or {}).get(self._device_key, {})
 
     @property
-    def value(self) -> Any:
+    def reading(self) -> Any:
         """This entity's value."""
         return self.values.get(self.entity_description.key)
 
     @property
     def has_value(self) -> bool:
         """Whether there is a value yet."""
-        return self.value is not None
+        return self.reading is not None
 
     @property
     def available(self) -> bool:

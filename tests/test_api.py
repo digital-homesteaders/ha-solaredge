@@ -407,6 +407,21 @@ async def test_identical_gets_in_flight_go_out_once() -> None:
     assert logins(session) == 1
 
 
+async def test_backup_reserve_checks_the_answer_status() -> None:
+    """SolarEdge answers 200 with status FAILED when it refuses (real answers, 2026-11-01)."""
+    passed = {"@c": ".ValidationResults", "status": "PASSED", "httpStatus": 200, "errorMessages": []}
+    failed = {
+        "@c": ".ValidationResults", "status": "FAILED", "httpStatus": 500,
+        "errorMessages": [{"message": "Invalid parameter {} in request", "messageCode": 9227, "params": [None]}],
+    }
+    client, session, _ = client_for({("PUT", "/storage/1/backupReserve"): [(200, passed, []), (200, failed, [])]})
+    await client.set_backup_reserve("1", 25, 48)
+    put = next(kwargs for m, u, kwargs in session.calls if m == "PUT")
+    assert put["json"] == {"backupReserve": 25, "backupReserveDurationInHours": 48}
+    with pytest.raises(SolarEdgeApiError, match="Invalid parameter"):
+        await client.set_backup_reserve("1", 20, 0)
+
+
 async def test_query_parameters() -> None:
     client, session, _ = client_for(
         {("GET", "/information/inverters"): [(200, {}, [])], ("GET", "/measurements"): [(200, {"summary": None}, [])]}
