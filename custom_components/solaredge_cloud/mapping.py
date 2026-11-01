@@ -451,11 +451,16 @@ def battery_energy(batteries: Sequence[Mapping[str, Any]], to_kwh: float) -> dic
     return {key: value for key, value in values.items() if value is not None}
 
 
-# batteryMode codes -> battery_mode states. MSC and MANUAL_TOU come from
-# nerd2/solaredgego; anything else (such as the app's "Installer Settings",
-# whose code is not known yet) is "other", with the code beside it.
-BATTERY_MODES = ["maximize_self_consumption", "time_of_use", "other"]
-_BATTERY_MODE_CODES = {"MSC": "maximize_self_consumption", "MANUAL_TOU": "time_of_use"}
+# batteryMode codes -> battery_mode states. INSTALLER (the app's "Installer
+# Settings") is from a real site; MSC and MANUAL_TOU from nerd2/solaredgego;
+# BACKUP_ONLY from the app's code. Anything else is "other", with the code beside it.
+BATTERY_MODES = ["installer", "maximize_self_consumption", "time_of_use", "backup_only", "other"]
+_BATTERY_MODE_CODES = {
+    "INSTALLER": "installer",
+    "MSC": "maximize_self_consumption",
+    "MANUAL_TOU": "time_of_use",
+    "BACKUP_ONLY": "backup_only",
+}
 
 
 def battery_mode(response: Any) -> dict[str, Any]:
