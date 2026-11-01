@@ -805,7 +805,7 @@ class SolarEdgeCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
             raise HomeAssistantError("SolarEdge rejected the login") from err
         except SolarEdgeError as err:
             raise HomeAssistantError(f"SolarEdge did not accept the backup reserve: {err}") from err
-        expires = datetime.fromtimestamp(self.now_ms() / 1000 + hours * 3600, tz=UTC) if hours else None
+        expires = datetime.fromtimestamp(self.now_ms() / 1000 + hours * 3600, tz=UTC) if hours > 0 else None
         if self.data is not None:
             # In place, without async_set_updated_data: that would restart the poll timer
             # and mark a failing coordinator as working.

@@ -419,7 +419,7 @@ async def test_backup_reserve_checks_the_answer_status() -> None:
     put = next(kwargs for m, u, kwargs in session.calls if m == "PUT")
     assert put["json"] == {"backupReserve": 25, "backupReserveDurationInHours": 48}
     with pytest.raises(SolarEdgeApiError, match="Invalid parameter"):
-        await client.set_backup_reserve("1", 20, 0)
+        await client.set_backup_reserve("1", 20, -1)
 
 
 async def test_query_parameters() -> None:

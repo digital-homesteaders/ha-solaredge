@@ -455,8 +455,9 @@ def battery_energy(batteries: Sequence[Mapping[str, Any]], to_kwh: float) -> dic
 # Marks a value to clear (CLEARABLE) rather than leave out.
 CLEAR = object()
 
-# Backup reserve durations the app offers -> hours (0 = unlimited).
-RESERVE_DURATIONS = {"unlimited": 0, "24_hours": 24, "48_hours": 48, "72_hours": 72}
+# Backup reserve durations the app offers -> hours. Unlimited is -1: 0 would
+# drop the reserve and go back to the base one (seen on a real site).
+RESERVE_DURATIONS = {"unlimited": -1, "24_hours": 24, "48_hours": 48, "72_hours": 72}
 
 # batteryMode codes -> battery_mode states. INSTALLER (the app's "Installer
 # Settings") is from a real site; MSC and MANUAL_TOU from nerd2/solaredgego;

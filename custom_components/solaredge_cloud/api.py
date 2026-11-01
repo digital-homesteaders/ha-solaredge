@@ -586,9 +586,11 @@ class SolarEdgeCloudClient:
         )
 
     async def set_backup_reserve(self, site_id: str, percent: int, hours: int) -> None:
-        """Set the backup reserve for `hours` hours; 0 is unlimited, as in the app.
+        """Set the backup reserve for `hours` hours; -1 is unlimited.
 
-        Checked on a real site (2026-11-01). The field names come from the app's
+        Checked on a real site (2026-11-01): -1 holds with no end time, while 0
+        drops the reserve set from the app and goes back to the base one (the
+        installer's) a moment later. The field names come from the app's
         code. SolarEdge answers HTTP 200 even when it refuses: the body's status
         says PASSED or FAILED. Without the duration it answers FAILED ("Invalid
         parameter {} in request") but may still apply the value for 24 hours,
