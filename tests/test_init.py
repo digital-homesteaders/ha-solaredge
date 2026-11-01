@@ -111,6 +111,7 @@ async def test_setup_creates_devices_and_values(hass: HomeAssistant, replay: Rep
         ("sensor", f"{SITE}_battery_energy_discharged"): "0.0",
         ("sensor", f"{SITE}_battery_residual_energy"): "6.2",
         ("sensor", f"{SITE}_battery_state_of_health"): "95",
+        ("sensor", f"{SITE}_battery_mode"): "maximize_self_consumption",
         ("sensor", f"{SITE}_ev_{EV}_power"): "9509",
         ("sensor", f"{SITE}_ev_{EV}_charging_state"): "plugged_in_charging",
         ("sensor", f"{SITE}_ev_{EV}_energy_charged"): "127.456",
@@ -161,8 +162,25 @@ async def test_requests_per_tick(hass: HomeAssistant, replay: ReplayClient, froz
     assert replay.count("getSiteDeviceApplianceSessionsHistory") == 1
     assert replay.count("getSiteAlerts") == 1
     assert replay.count("getSiteEnergyByInverter") == 1
+    assert replay.count("getSiteBatteryMode") == 1
     await advance(hass, frozen, 300)
     assert replay.count("getSiteDeviceApplianceSessionsHistory") == 1
+
+
+async def test_battery_settings_from_a_real_answer(hass: HomeAssistant, replay: ReplayClient, entry_data) -> None:
+    """Backup reserve and Weather Guard appear when getSiteBatteries carries storageInfo."""
+    replay.answers["getSiteBatteries"] = load_fixture("batteries-two.json")["response"]
+    replay.answers["getSiteBatteryMode"] = {"batteryMode": "SOMETHING_NEW"}
+    await setup(hass, entry_data)
+    assert state(hass, "sensor", f"{SITE}_battery_backup_reserve") == "100.0"
+    assert state(hass, "sensor", f"{SITE}_battery_weather_guard_status") == "Not available due to not backup reserve"
+    assert state(hass, "binary_sensor", f"{SITE}_battery_weather_guard") == "on"
+    reserve = hass.states.get(entity_id(hass, "sensor", f"{SITE}_battery_backup_reserve"))
+    assert reserve.attributes["editable"] is False and reserve.attributes["unit_of_measurement"] == "%"
+    mode = hass.states.get(entity_id(hass, "sensor", f"{SITE}_battery_mode"))
+    assert (mode.state, mode.attributes["code"]) == ("other", "SOMETHING_NEW")
+    # The limit is a diagnostic, off by default.
+    assert entity_id(hass, "sensor", f"{SITE}_battery_backup_reserve_limit") is not None
 
 
 async def test_default_and_custom_poll_interval(hass: HomeAssistant, replay: ReplayClient, entry_data) -> None:

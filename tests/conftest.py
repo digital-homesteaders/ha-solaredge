@@ -95,6 +95,9 @@ class ReplayClient:
     async def get_site_batteries(self, site_id: str) -> Any:
         return self._answer("getSiteBatteries", site_id)
 
+    async def get_site_battery_mode(self, site_id: str) -> Any:
+        return self._answer("getSiteBatteryMode", site_id)
+
     async def get_site_measurements(self, site_id: str, end_date: str) -> Any:
         return self._answer("getSiteMeasurements", site_id, end_date, match={"endDate": end_date})
 

@@ -605,6 +605,7 @@ class SolarEdgeCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
 
         if batteries := mapping.batteries_of(battery_answer):
             self._merge(data, site, KIND_BATTERY, self._battery_energy(sid, batteries))
+        self._merge(data, site, KIND_BATTERY, mapping.battery_settings(battery_answer))
 
         if site.has_meter:
             task = self._meter_tasks.get(sid)
@@ -618,10 +619,12 @@ class SolarEdgeCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         asleep = mapping.is_asleep(live, now_ms, self.timing.cadence_ms) if live else False
         today = datetime.fromtimestamp(now_ms / 1000, tz=_zone(site.timezone)).date().isoformat()
         rids = list(site.ev_chargers)
-        communication, alerts, by_inverter, *histories = await asyncio.gather(
+        communication, alerts, by_inverter, mode, *histories = await asyncio.gather(
             self._optional(f"communication for site {sid}", self.client.get_site_communication(sid)),
             self._optional(f"alerts for site {sid}", self.client.get_site_alerts(sid)),
             self._optional(f"energy by inverter for site {sid}", self.client.get_site_energy_by_inverter(sid, today, serials)) if serials else _none(),
+            # The mode only changes when someone changes it: the slow tick is enough.
+            self._optional(f"battery mode for site {sid}", self.client.get_site_battery_mode(sid)) if site.has_battery else _none(),
             *(self._optional(f"charging history of {rid} for site {sid}", self.client.get_appliance_sessions_history(sid, rid)) for rid in rids),
         )
         self._merge(data, site, KIND_SITE, mapping.site_values(communication, alerts, asleep))
@@ -631,6 +634,7 @@ class SolarEdgeCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
                 data, site, KIND_INVERTER,
                 {"optimizer_temperature_max": mapping.max_optimizer_temperature(by_inverter)},
             )
+        self._merge(data, site, KIND_BATTERY, mapping.battery_mode(mode))
         for rid, history in zip(rids, histories, strict=True):
             charged = mapping.ev_charged_wh(history)
             if charged is not None:
@@ -791,6 +795,7 @@ class SolarEdgeCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
             requests[sid, "devices"] = self.client.get_site_devices(sid)
             if site.has_battery:
                 requests[sid, "batteries"] = self.client.get_site_batteries(sid)
+                requests[sid, "battery_mode"] = self.client.get_site_battery_mode(sid)
             if site.inverter_serials:
                 requests[sid, "inverters"] = self.client.get_inverters_information(site.inverter_serials)
         answers = await asyncio.gather(*requests.values(), return_exceptions=True)

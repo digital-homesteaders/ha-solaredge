@@ -79,6 +79,20 @@
    }
   },
   {
+   "method": "getSiteBatteryMode",
+   "args": {
+    "siteId": 9999999
+   },
+   "result": {
+    "batteryMode": "MSC",
+    "touConfiguration": {
+     "ownerConfiguration": [],
+     "touPlan": null
+    },
+    "manualTouConfiguration": null
+   }
+  },
+  {
    "method": "getSiteCommunication",
    "args": {
     "siteId": 9999999

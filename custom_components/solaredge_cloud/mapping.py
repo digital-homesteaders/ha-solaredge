@@ -451,6 +451,49 @@ def battery_energy(batteries: Sequence[Mapping[str, Any]], to_kwh: float) -> dic
     return {key: value for key, value in values.items() if value is not None}
 
 
+# batteryMode codes -> battery_mode states. MSC and MANUAL_TOU come from
+# nerd2/solaredgego; anything else (such as the app's "Installer Settings",
+# whose code is not known yet) is "other", with the code beside it.
+BATTERY_MODES = ["maximize_self_consumption", "time_of_use", "other"]
+_BATTERY_MODE_CODES = {"MSC": "maximize_self_consumption", "MANUAL_TOU": "time_of_use"}
+
+
+def battery_mode(response: Any) -> dict[str, Any]:
+    """The battery mode of a getSiteBatteryMode answer, and SolarEdge's own code for it."""
+    if not isinstance(response, Mapping):
+        return {}
+    code = response.get("batteryMode")
+    if not isinstance(code, str) or not code:
+        return {}
+    return {"mode": _BATTERY_MODE_CODES.get(code.upper(), "other"), "mode_code": code}
+
+
+def battery_settings(response: Any) -> dict[str, Any]:
+    """Backup reserve and Weather Guard from the storageInfo of a getSiteBatteries answer.
+
+    Field names from a real two-battery site (tests/fixtures/batteries-two.json).
+    Not in 2.0.0. The reserve is only reported when SolarEdge says it may be
+    viewed; whether it may be changed is kept for a later control.
+    """
+    if not isinstance(response, Mapping) or not isinstance(response.get("storageInfo"), Mapping):
+        return {}
+    info = response["storageInfo"]
+    values: dict[str, Any] = {}
+    if info.get("portiaBackupReserveViewCapable") is not False:
+        values["backup_reserve"] = finite(info.get("userBackupReserveValue"))
+        values["backup_reserve_limit"] = finite(info.get("backupReserveControlUpToLimit"))
+    if isinstance(editable := info.get("portiaBackupReserveEditCapable"), bool):
+        values["backup_reserve_editable"] = editable
+    configuration = info.get("weatherGuardServiceConfiguration")
+    if isinstance(configuration, str) and configuration:
+        values["weather_guard"] = configuration.upper() == "ENABLED"
+    status = info.get("weatherGuardServiceStatus")
+    if isinstance(status, str) and status:
+        # NOT_AVAILABLE_DUE_TO_NOT_BACKUP_RESERVE -> "Not available due to not backup reserve".
+        values["weather_guard_status"] = status.replace("_", " ").capitalize()
+    return {key: value for key, value in values.items() if value is not None}
+
+
 def battery_flow_kwh(previous_w: float, current_w: float, seconds: float) -> tuple[float, float]:
     """kWh charged and discharged between two battery power samples (charging positive).
 
