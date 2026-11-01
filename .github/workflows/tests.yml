@@ -1,0 +1,26 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+      - name: Install
+        run: pip install -r requirements_test.txt ruff mypy
+      - name: Tests
+        run: python -m pytest -q
+      - name: Lint
+        run: ruff check custom_components tests --select E,F,W,I,B,UP,SIM --ignore E501
+      - name: Types
+        run: mypy custom_components/solaredge_cloud --ignore-missing-imports

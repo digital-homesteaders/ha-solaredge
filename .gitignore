@@ -7,3 +7,12 @@ htmlcov/
 
 # Dev notes, kept local
 CLAUDE.md
+.DS_Store
+.tools/
+tests/build/
+dist/
+.env
+*.pem
+*.key
+*.p12
+*diagnostics*.json
