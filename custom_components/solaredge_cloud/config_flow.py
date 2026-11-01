@@ -84,6 +84,12 @@ class SolarEdgeCloudConfigFlow(ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             username = user_input[CONF_USERNAME].strip()
             await self.async_set_unique_id(username.lower())
+            existing = self.hass.config_entries.async_entry_for_domain_unique_id(DOMAIN, username.lower())
+            if existing is not None and existing.disabled_by is not None:
+                # Hidden from the integrations list by default: say where it is.
+                return self.async_abort(
+                    reason="already_configured_disabled", description_placeholders={"title": existing.title}
+                )
             self._abort_if_unique_id_configured()
             error, sites = await _async_check_login(self.hass, username, user_input[CONF_PASSWORD])
             if error:

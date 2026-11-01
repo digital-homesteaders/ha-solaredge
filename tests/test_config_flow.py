@@ -82,6 +82,22 @@ async def test_already_configured(hass: HomeAssistant, flow_client) -> None:
     flow_client.login.assert_not_called()
 
 
+async def test_already_configured_disabled(hass: HomeAssistant, flow_client) -> None:
+    """A disabled entry is hidden from the list: the abort says it is disabled and names it."""
+    MockConfigEntry(
+        domain=DOMAIN,
+        unique_id=USERNAME.lower(),
+        title="Synthetic site",
+        data={},
+        disabled_by=config_entries.ConfigEntryDisabler.USER,
+    ).add_to_hass(hass)
+    result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": config_entries.SOURCE_USER})
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], {"username": USERNAME, "password": PASSWORD})
+    assert result["type"] is FlowResultType.ABORT and result["reason"] == "already_configured_disabled"
+    assert result["description_placeholders"] == {"title": "Synthetic site"}
+    flow_client.login.assert_not_called()
+
+
 async def test_reauth(hass: HomeAssistant, flow_client) -> None:
     entry = MockConfigEntry(
         domain=DOMAIN, unique_id=USERNAME.lower(), title="Synthetic site",

@@ -25,6 +25,7 @@
     },
     "abort": {
       "already_configured": "This mySolarEdge account is already set up.",
+      "already_configured_disabled": "This mySolarEdge account is already set up as \"{title}\", but that entry is disabled. Turn it back on in Settings → Devices & services → SolarEdge Cloud (mySolarEdge) → ⋮ → Enable, or delete it and add the account again. Disabled entries are hidden unless you choose ⋮ → Show disabled integrations on the integrations page.",
       "no_sites": "This mySolarEdge account has no sites.",
       "reauth_successful": "Logged in again."
     }
