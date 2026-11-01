@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 from datetime import timedelta
 from typing import Any
 from unittest.mock import patch
@@ -499,6 +500,32 @@ async def test_device_list_only_while_an_ev_charges(hass: HomeAssistant, replay:
     await advance(hass, frozen, 60)
     assert replay.count("getSiteDevices") == 1
     assert state(hass, "sensor", f"{SITE}_ev_{EV}_power") == "9509"
+
+
+async def test_two_ev_chargers_read_the_device_list_every_poll(
+    hass: HomeAssistant, replay: ReplayClient, frozen, entry_data
+) -> None:
+    """The powerflow's evCharger is one per site: with two chargers, only the list tells them apart."""
+    responses = load_fixture("ev-charger-devices.json")["responses"]
+    devices = copy.deepcopy(responses["pluggedin_not_charging"])
+    second = copy.deepcopy(responses["unplugged_not_charging"]["devicesByType"]["EV_CHARGER"][0])
+    second["reporterId"] = 2000000000000002
+    devices["devicesByType"]["EV_CHARGER"].append(second)
+    flow = replay.results["getSitePowerflow"][0]["result"]
+    # Neither charges. The site's one evCharger entry speaks for the unplugged one.
+    flow["evCharger"] = {"isActive": True, "connectionStatus": "disconnected", "currentPower": None}
+    replay.answers["getSitePowerflow"] = flow
+    replay.answers["getSiteDevices"] = devices
+    entry = await setup(hass, entry_data)
+    assert len(entry.runtime_data.sites[SITE].ev_chargers) == 2
+    await advance(hass, frozen, 50)
+    replay.calls.clear()
+    for _ in range(3):
+        await advance(hass, frozen, 60)
+        # The plugged-in charger doesn't take on the other one's status.
+        assert state(hass, "sensor", f"{SITE}_ev_{EV}_charging_state") == "plugged_in"
+        assert state(hass, "sensor", f"{SITE}_ev_2000000000000002_charging_state") == "plugged_out"
+    assert replay.count("getSiteDevices") == replay.count("getSitePowerflow") == 3
 
 
 async def test_empty_equipment_is_asked_hourly(hass: HomeAssistant, replay: ReplayClient, frozen, entry_data) -> None:
