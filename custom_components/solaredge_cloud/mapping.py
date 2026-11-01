@@ -485,7 +485,7 @@ def battery_settings(response: Any) -> dict[str, Any]:
 
     Field names from a real two-battery site (tests/fixtures/batteries-two.json).
     Not in 2.0.0. The reserve is only reported when SolarEdge says it may be
-    viewed; whether it may be changed is kept for a later control.
+    viewed; whether it may be changed decides if the reserve control sends.
     """
     if not isinstance(response, Mapping) or not isinstance(response.get("storageInfo"), Mapping):
         return {}

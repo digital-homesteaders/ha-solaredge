@@ -188,6 +188,17 @@ async def test_battery_settings_from_a_real_answer(hass: HomeAssistant, replay: 
     assert replay.count("setBackupReserve") == 0
     mode = hass.states.get(entity_id(hass, "sensor", f"{SITE}_battery_mode"))
     assert (mode.state, mode.attributes["code"]) == ("other", "SOMETHING_NEW")
+    # Each new entity has its own translated name.
+    names = {
+        ("sensor", "mode"): "Battery mode",
+        ("number", "backup_reserve"): "Backup reserve",
+        ("select", "backup_reserve_duration"): "Backup reserve duration",
+        ("sensor", "weather_guard_status"): "Weather Guard status",
+        ("binary_sensor", "weather_guard"): "Weather Guard",
+    }
+    for (platform, key), name in names.items():
+        friendly = hass.states.get(entity_id(hass, platform, f"{SITE}_battery_{key}")).attributes["friendly_name"]
+        assert friendly.endswith(f" {name}"), (key, friendly)
     # The limit is a diagnostic, off by default.
     assert entity_id(hass, "sensor", f"{SITE}_battery_backup_reserve_limit") is not None
 
@@ -218,6 +229,28 @@ async def test_set_backup_reserve_for_the_chosen_duration(hass: HomeAssistant, r
     with pytest.raises(HomeAssistantError, match="did not accept the backup reserve"):
         await hass.services.async_call("number", "set_value", {"entity_id": number, "value": 40}, blocking=True)
     assert hass.states.get(number).state == "30.0"
+
+
+async def test_reserve_is_read_again_after_setting_it(hass: HomeAssistant, replay: ReplayClient, frozen, entry_data) -> None:
+    """SolarEdge's battery answer lags ~20 s behind a write: one extra read 30 s later."""
+    answer = load_fixture("batteries-two.json")["response"]
+    answer["storageInfo"].update(portiaBackupReserveEditCapable=True, userBackupReserveValue=20.0, userBackupReserveCommandExpiration=0)
+    replay.answers["getSiteBatteries"] = answer
+    await setup(hass, entry_data)
+    number = entity_id(hass, "number", f"{SITE}_battery_backup_reserve")
+    await hass.services.async_call("number", "set_value", {"entity_id": number, "value": 25}, blocking=True)
+    before = replay.count("getSiteBatteries")
+    ticks = replay.count("getSiteEnergyOverview")
+    # SolarEdge has caught up by the time of the re-read.
+    fresh = copy.deepcopy(answer)
+    fresh["storageInfo"]["userBackupReserveValue"] = 25.0
+    replay.answers["getSiteBatteries"] = fresh
+    await advance(hass, frozen, 31)
+    assert hass.states.get(number).state == "25.0"
+    # One re-read; any other battery read is an energy tick's.
+    await advance(hass, frozen, 60)
+    extra = replay.count("getSiteBatteries") - before - (replay.count("getSiteEnergyOverview") - ticks)
+    assert extra == 1
 
 
 async def test_default_and_custom_poll_interval(hass: HomeAssistant, replay: ReplayClient, entry_data) -> None:

@@ -19,6 +19,7 @@ import logging
 import time
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
+from functools import partial
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -53,6 +54,7 @@ from .const import (
     KIND_INVERTER,
     KIND_METER,
     KIND_SITE,
+    RESERVE_RECHECK_S,
     SLOW_EVERY,
     STORAGE_VERSION,
 )
@@ -162,6 +164,8 @@ class SolarEdgeCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         self._energy_due = True
         self._energy_count = 0
         self._unsub_energy: CALLBACK_TYPE | None = None
+        # Site id -> the pending re-read of the batteries after a backup reserve was set.
+        self._unsub_reserve: dict[str, CALLBACK_TYPE] = {}
         self._solar_idle: dict[str, bool] = {}
         # Requests that are failing or look stale, until they are fine again.
         self._failing: set[str] = set()
@@ -318,6 +322,9 @@ class SolarEdgeCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         if self._unsub_energy:
             self._unsub_energy()
             self._unsub_energy = None
+        for unsub in self._unsub_reserve.values():
+            unsub()
+        self._unsub_reserve.clear()
         for task in self._meter_tasks.values():
             task.cancel()
         if self._stored:
@@ -782,8 +789,9 @@ class SolarEdgeCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
     async def async_set_backup_reserve(self, site_id: str, percent: int) -> None:
         """Set the backup reserve for the chosen duration, and show it right away.
 
-        SolarEdge's battery answer catches up about 20 s later; the energy tick
-        reads it within 5 minutes.
+        SolarEdge's battery answer catches up about 20 s later (seen on a real
+        site), so an energy tick in between would show the old reserve again
+        for 5 minutes: the batteries are read once more RESERVE_RECHECK_S later.
         """
         site = self.sites[site_id]
         values = (self.data or {}).get(device_key(site_id, KIND_BATTERY), {})
@@ -798,9 +806,33 @@ class SolarEdgeCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         except SolarEdgeError as err:
             raise HomeAssistantError(f"SolarEdge did not accept the backup reserve: {err}") from err
         expires = datetime.fromtimestamp(self.now_ms() / 1000 + hours * 3600, tz=UTC) if hours else None
-        data = dict(self.data or {})
-        self._merge(data, site, KIND_BATTERY, {"backup_reserve": float(percent), "backup_reserve_expires": expires})
-        self.async_set_updated_data(data)
+        if self.data is not None:
+            # In place, without async_set_updated_data: that would restart the poll timer
+            # and mark a failing coordinator as working.
+            self._merge(self.data, site, KIND_BATTERY, {"backup_reserve": float(percent), "backup_reserve_expires": expires})
+            self.async_update_listeners()
+        if unsub := self._unsub_reserve.pop(site_id, None):
+            unsub()
+        self._unsub_reserve[site_id] = async_call_later(
+            self.hass, RESERVE_RECHECK_S, partial(self._reserve_recheck, site_id)
+        )
+
+    @callback
+    def _reserve_recheck(self, site_id: str, _now: datetime) -> None:
+        self._unsub_reserve.pop(site_id, None)
+        self.config_entry.async_create_background_task(
+            self.hass, self._async_reserve_recheck(site_id), f"{DOMAIN} backup reserve {site_id}"
+        )
+
+    async def _async_reserve_recheck(self, site_id: str) -> None:
+        """SolarEdge's battery settings after a reserve was set (one extra request)."""
+        site = self.sites.get(site_id)
+        if site is None or self.outages or self.auth_failed:
+            return
+        answer = await self._optional(f"batteries for site {site_id}", self.client.get_site_batteries(site_id))
+        if answer is not None and self.data is not None:
+            self._merge(self.data, site, KIND_BATTERY, mapping.battery_settings(answer))
+            self.async_update_listeners()
 
     async def async_set_activation(self, site_id: str, reporter_id: str, state: dict[str, Any]) -> None:
         """Switch an EV charger or load controller, then poll."""
