@@ -195,6 +195,7 @@ async def test_battery_settings_from_a_real_answer(hass: HomeAssistant, replay: 
         ("select", "backup_reserve_duration"): "Backup reserve duration",
         ("sensor", "weather_guard_status"): "Weather Guard status",
         ("binary_sensor", "weather_guard"): "Weather Guard",
+        ("button", "reset_backup_reserve"): "Reset backup reserve",
     }
     for (platform, key), name in names.items():
         friendly = hass.states.get(entity_id(hass, platform, f"{SITE}_battery_{key}")).attributes["friendly_name"]
@@ -224,6 +225,12 @@ async def test_set_backup_reserve_for_the_chosen_duration(hass: HomeAssistant, r
     assert state(hass, "sensor", f"{SITE}_battery_backup_reserve_expires") == "2026-10-17T11:00:00+00:00"
     # The choice survives a restart.
     assert entry.runtime_data.reserve_duration(SITE) == "48_hours"
+    # Reset: 0 hours, which SolarEdge answers by going back to the base reserve; nothing
+    # is guessed meanwhile (the base value comes with the next battery read).
+    reset = entity_id(hass, "button", f"{SITE}_battery_reset_backup_reserve")
+    await hass.services.async_call("button", "press", {"entity_id": reset}, blocking=True)
+    assert replay.calls[-1] == ("setBackupReserve", (SITE, 30, 0))
+    assert hass.states.get(number).state == "30.0"
     # A refusal is reported, and the shown reserve stays.
     replay.fail["setBackupReserve"] = SolarEdgeApiError("backupReserve: Invalid parameter {} in request")
     with pytest.raises(HomeAssistantError, match="did not accept the backup reserve"):

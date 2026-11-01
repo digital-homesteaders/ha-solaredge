@@ -215,6 +215,7 @@ reported per site.
 | Backup reserve *(optional, number)* | the app's *Backup Reserve* %, and setting it. The slider goes up to the limit SolarEdge gives for the site. The `editable` attribute says whether SolarEdge lets this site change it; if not, setting it is refused. |
 | Backup reserve duration *(config select)* | how long a reserve set from Home Assistant lasts: unlimited, 24, 48 or 72 hours, as in the app. Kept by the integration (across restarts) and used for the next reserve you set; choosing it changes nothing at SolarEdge. |
 | Backup reserve until *(optional, timestamp)* | when a timed reserve ends and SolarEdge goes back to the previous one. Appears with the first timed reserve; unknown while it is unlimited. |
+| Reset backup reserve *(optional, button)* | drops the reserve set from the app or Home Assistant and goes back to the base one (your installer's). The app has no such button; SolarEdge does this when the reserve is sent with 0 hours. The base value shows about half a minute later. |
 | Backup reserve limit *(optional, diagnostic, off by default)* | the highest reserve SolarEdge allows |
 | Weather Guard *(optional, binary sensor)* | on when the app's *Weather Guard* is enabled; not whether it is holding the battery right now |
 | Weather Guard status *(optional, diagnostic)* | SolarEdge's status text, such as "Not available due to not backup reserve" |
@@ -277,6 +278,7 @@ real time or not communicating, or a devices list not updated for 10 minutes.
 
 - **Backup reserve control:** set the reserve for unlimited, 24, 48 or 72 hours, with
   a sensor for when a timed reserve ends.
+- **Reset backup reserve** button: back to the installer's reserve.
 - **Battery settings from the app, read only:** battery mode, Weather Guard and its status. The reserve
   and Weather Guard come from the battery answer already read every 5 minutes; the
   battery mode is one extra request per site every 15 minutes. The diagnostics
