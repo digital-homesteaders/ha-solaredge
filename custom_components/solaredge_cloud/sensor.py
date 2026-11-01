@@ -170,7 +170,7 @@ SENSORS: tuple[SolarEdgeSensorDescription, ...] = (
     SolarEdgeSensorDescription(
         kind=KIND_BATTERY,
         key="mode",
-        translation_key="mode",
+        translation_key="battery_mode",
         optional=True,
         device_class=SensorDeviceClass.ENUM,
         options=BATTERY_MODES,

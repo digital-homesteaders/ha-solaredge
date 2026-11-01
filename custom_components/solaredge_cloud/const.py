@@ -27,6 +27,9 @@ FAIL_LIMIT: Final = 3
 # Every this many energy ticks (5 min each) the slow data is read too: alerts,
 # connectivity, optimizer temperatures and the EV charging history.
 SLOW_EVERY: Final = 3
+# After a backup reserve is set, the batteries are read once more this many
+# seconds later: SolarEdge's answer caught up about 20 s after a write.
+RESERVE_RECHECK_S: Final = 30
 
 # A devices list SolarEdge last updated longer ago than this counts as stale.
 STALE_DATA_MS: Final = 10 * 60 * 1000
