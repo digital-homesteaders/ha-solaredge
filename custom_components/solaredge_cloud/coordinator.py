@@ -786,8 +786,18 @@ class SolarEdgeCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         self._store.async_delay_save(lambda: self._stored, 10)
         self.async_update_listeners()
 
-    async def async_set_backup_reserve(self, site_id: str, percent: int) -> None:
-        """Set the backup reserve for the chosen duration, and show it right away.
+    async def async_reset_backup_reserve(self, site_id: str) -> None:
+        """Drop the reserve set from the app or here, back to the base (installer's) one.
+
+        SolarEdge does this for a duration of 0 hours (seen on a real site); the
+        percentage sent with it doesn't matter, so the current one goes. The base
+        reserve isn't known until SolarEdge reports it, about 20 s later.
+        """
+        current = (self.data or {}).get(device_key(site_id, KIND_BATTERY), {}).get("backup_reserve")
+        await self.async_set_backup_reserve(site_id, round(current) if isinstance(current, (int, float)) else 0, hours=0)
+
+    async def async_set_backup_reserve(self, site_id: str, percent: int, hours: int | None = None) -> None:
+        """Set the backup reserve for the chosen duration (or `hours`), and show it right away.
 
         SolarEdge's battery answer catches up about 20 s later (seen on a real
         site), so an energy tick in between would show the old reserve again
@@ -797,7 +807,8 @@ class SolarEdgeCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         values = (self.data or {}).get(device_key(site_id, KIND_BATTERY), {})
         if values.get("backup_reserve_editable") is False:
             raise HomeAssistantError("SolarEdge doesn't let this site change its backup reserve")
-        hours = mapping.RESERVE_DURATIONS[self.reserve_duration(site_id)]
+        if hours is None:
+            hours = mapping.RESERVE_DURATIONS[self.reserve_duration(site_id)]
         try:
             await self.client.set_backup_reserve(site_id, percent, hours)
         except SolarEdgeAuthError as err:
@@ -806,7 +817,7 @@ class SolarEdgeCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         except SolarEdgeError as err:
             raise HomeAssistantError(f"SolarEdge did not accept the backup reserve: {err}") from err
         expires = datetime.fromtimestamp(self.now_ms() / 1000 + hours * 3600, tz=UTC) if hours > 0 else None
-        if self.data is not None:
+        if self.data is not None and hours != 0:
             # In place, without async_set_updated_data: that would restart the poll timer
             # and mark a failing coordinator as working.
             self._merge(self.data, site, KIND_BATTERY, {"backup_reserve": float(percent), "backup_reserve_expires": expires})
