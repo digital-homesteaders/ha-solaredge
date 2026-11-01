@@ -5,10 +5,10 @@ grid meter and the site's power split, batteries, SolarEdge EV chargers and
 home load controllers (smart relays). It logs in with your **mySolarEdge
 e-mail and password**. You don't need an API key.
 
-> **Status: v0.2, not yet tested against a real SolarEdge account.** It is a
-> port of the [com.solaredge](https://github.com/gruijter/com.solaredge) v2.0.0
-> rewrite for Homey by Robin de Gruijter. The tests run against that project's
-> captured SolarEdge answers, on Home Assistant 2026.10. `hacs.json` asks for
+> **Status: v0.2.** The login and polling work against a real SolarEdge
+> account. It is a port of the [com.solaredge](https://github.com/gruijter/com.solaredge)
+> v2.0.0 rewrite for Homey by Robin de Gruijter. The tests run against that
+> project's captured SolarEdge answers, on Home Assistant 2026.10. `hacs.json` asks for
 > 2025.2 or newer, but versions before 2026.10 haven't been tried. See
 > [What needs testing](#what-needs-testing).
 
@@ -56,8 +56,11 @@ either.
   account locked.
 
 - **Every poll (default 60 s):** 1 power flow request per site, for all its
-  devices. Sites with EV chargers or load controllers also get 1 devices-list
-  request.
+  devices. Sites with load controllers or several EV chargers also get 1
+  devices-list request. A single EV charger gets it only while it charges;
+  otherwise the power flow has its status, and the list is read on the energy
+  tick. (The power flow has one charger entry per site, so with several
+  chargers only the list tells them apart.)
 - **Energy tick, every 5 minutes**, just after the inverters upload: the
   energy overview, inverter details (all inverters in one request), batteries,
   and the meter's totals for this year.
@@ -259,6 +262,15 @@ real time or not communicating, or a devices list not updated for 10 minutes.
 
 ## Release notes
 
+### 0.2.1
+
+- **Several EV chargers on one site** each keep their own status: the devices list is
+  read on every poll, as the power flow's charger entry is one per site. Before, an
+  idle charger could show the other one's status between energy ticks.
+- **Adding an account whose entry is disabled** says so and how to enable it, instead
+  of just "already set up".
+- Brand icon.
+
 ### 0.2.0
 
 Brings the integration level with the Hubitat port (hubitat-solaredge).
@@ -279,9 +291,9 @@ with the new OAuth login.
 
 ## What needs testing
 
-- **The OAuth login, against a real account.** It follows com.solaredge
-  v2.1.1. The same flow is confirmed working in the Hubitat port on a real
-  hub, but this Python version has only run against a fake login server.
+- **Token renewal over a day or more** on a real account: the access token is
+  renewed with the refresh token, without sending the password again. The first
+  login against a real account worked on 2026-11-01.
 - **EV charger and load controller fields with real hardware.** The mapping
   follows 2.0.0 and the real EV/load-controller answers in its tests. The
   battery fields are checked against one real two-battery site.

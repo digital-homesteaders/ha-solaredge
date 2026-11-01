@@ -494,11 +494,13 @@ class SolarEdgeCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
     def _devices_due(self, site: SiteInfo, data: dict[str, dict[str, Any]], energy: bool) -> bool:
         """Whether this poll needs the site's devices list.
 
-        Load controllers need it every poll. EV chargers only while one is
-        charging (for its own power and session); otherwise the powerflow has
-        their status, and the list is read on the energy tick.
+        Load controllers need it every poll, and so do several EV chargers on
+        one site: the powerflow's evCharger is one per site, so only the list
+        tells them apart. One EV charger only while it charges (for its own
+        power and session); otherwise the powerflow has its status, and the
+        list is read on the energy tick.
         """
-        if site.load_controllers:
+        if site.load_controllers or len(site.ev_chargers) > 1:
             return True
         if not site.ev_chargers:
             return False
