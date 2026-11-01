@@ -211,9 +211,9 @@ async def test_set_backup_reserve_for_the_chosen_duration(hass: HomeAssistant, r
     number = entity_id(hass, "number", f"{SITE}_battery_backup_reserve")
     duration = entity_id(hass, "select", f"{SITE}_battery_backup_reserve_duration")
     assert hass.states.get(duration).state == "unlimited"
-    # Unlimited is sent as 0 hours.
+    # Unlimited is sent as -1 hours (0 would go back to the base reserve).
     await hass.services.async_call("number", "set_value", {"entity_id": number, "value": 25}, blocking=True)
-    assert replay.calls[-1] == ("setBackupReserve", (SITE, 25, 0))
+    assert replay.calls[-1] == ("setBackupReserve", (SITE, 25, -1))
     assert hass.states.get(number).state == "25.0"
     # Unlimited has no end: the "until" sensor waits for a timed reserve.
     assert er.async_get(hass).async_get_entity_id("sensor", DOMAIN, f"{SITE}_battery_backup_reserve_expires") is None
