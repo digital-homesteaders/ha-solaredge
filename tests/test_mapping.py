@@ -194,6 +194,43 @@ def test_real_two_battery_answer() -> None:
     assert mapping.discover({"storage": {"isActive": True, "chargeLevel": 95}}, None)["battery"]
 
 
+def test_real_battery_settings() -> None:
+    """The app's Backup Reserve and Weather Guard rows, from the real two-battery answer."""
+    answer = load_fixture("batteries-two.json")["response"]
+    assert mapping.battery_settings(answer) == {
+        "backup_reserve": 100.0,
+        "backup_reserve_limit": 72,
+        "backup_reserve_editable": False,
+        "weather_guard": True,
+        "weather_guard_status": "Not available due to not backup reserve",
+    }
+    # A reserve SolarEdge says may not be viewed is not reported.
+    hidden = {"storageInfo": {**answer["storageInfo"], "portiaBackupReserveViewCapable": False}}
+    assert "backup_reserve" not in mapping.battery_settings(hidden)
+    assert mapping.battery_settings({"storageInfo": {"weatherGuardServiceConfiguration": "DISABLED"}}) == {
+        "weather_guard": False
+    }
+    assert mapping.battery_settings({"devicesByType": {}}) == {}
+    assert mapping.battery_settings(None) == {}
+
+
+@pytest.mark.parametrize(
+    ("answer", "expected"),
+    [
+        ({"batteryMode": "MSC"}, {"mode": "maximize_self_consumption", "mode_code": "MSC"}),
+        ({"batteryMode": "MANUAL_TOU"}, {"mode": "time_of_use", "mode_code": "MANUAL_TOU"}),
+        # A code not known yet (the app's "Installer Settings") keeps its code.
+        ({"batteryMode": "SOMETHING_NEW"}, {"mode": "other", "mode_code": "SOMETHING_NEW"}),
+        # A site without a battery answers with nulls.
+        ({"batteryMode": None, "touConfiguration": None}, {}),
+        ({"status": "FAILED"}, {}),
+        (None, {}),
+    ],
+)
+def test_battery_mode(answer: Any, expected: dict[str, Any]) -> None:
+    assert mapping.battery_mode(answer) == expected
+
+
 @pytest.mark.parametrize(
     ("previous", "current", "charged", "discharged"),
     [

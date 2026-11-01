@@ -48,6 +48,9 @@
     "binary_sensor": {
       "solar_charging": {
         "name": "Solar surplus charging"
+      },
+      "weather_guard": {
+        "name": "Weather Guard"
       }
     },
     "button": {
@@ -178,6 +181,23 @@
       },
       "vehicle": {
         "name": "Vehicle"
+      },
+      "battery_mode": {
+        "name": "Battery mode",
+        "state": {
+          "maximize_self_consumption": "Maximize self-consumption",
+          "time_of_use": "Time of use",
+          "other": "Other"
+        }
+      },
+      "backup_reserve": {
+        "name": "Backup reserve"
+      },
+      "backup_reserve_limit": {
+        "name": "Backup reserve limit"
+      },
+      "weather_guard_status": {
+        "name": "Weather Guard status"
       }
     },
     "switch": {

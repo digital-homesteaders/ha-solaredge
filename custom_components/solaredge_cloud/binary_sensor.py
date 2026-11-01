@@ -13,7 +13,7 @@ from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from .const import KIND_EV, KIND_SITE
+from .const import KIND_BATTERY, KIND_EV, KIND_SITE
 from .coordinator import SolarEdgeConfigEntry
 from .entity import SolarEdgeEntity, SolarEdgeEntityDescription, async_add_when_seen, entities_for
 
@@ -39,6 +39,10 @@ BINARY_SENSORS: tuple[SolarEdgeBinarySensorDescription, ...] = (
     ),
     SolarEdgeBinarySensorDescription(
         kind=KIND_EV, key="solar_charging", translation_key="solar_charging", optional=True
+    ),
+    # The app's Weather Guard setting (on = enabled), not whether it is holding the battery now.
+    SolarEdgeBinarySensorDescription(
+        kind=KIND_BATTERY, key="weather_guard", translation_key="weather_guard", optional=True
     ),
 )
 

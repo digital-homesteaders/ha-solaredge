@@ -593,6 +593,14 @@ class SolarEdgeCloudClient:
             params=[("triggerHF", "false")],
         )
 
+    async def get_site_battery_mode(self, site_id: str) -> dict[str, Any]:
+        """The battery mode the app shows (batteryMode: MSC, MANUAL_TOU, ...) and its TOU schedule.
+
+        Not in 2.0.0's polling. Read only: the matching PUT replaces the whole
+        schedule and is not used.
+        """
+        return await self.request("GET", f"{HOME_AUTOMATION_URL}/storage/{site_id}/batteryMode")
+
     async def get_site_equipment(self, site_id: str) -> dict[str, Any]:
         """Models and serials per kind: inverters, optimizers, storage, meters."""
         return await self.request(

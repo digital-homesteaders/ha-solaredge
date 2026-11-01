@@ -26,7 +26,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from .const import KIND_BATTERY, KIND_EV, KIND_HLC, KIND_INVERTER, KIND_METER, KIND_SITE
 from .coordinator import SolarEdgeConfigEntry
 from .entity import SolarEdgeEntity, SolarEdgeEntityDescription, async_add_when_seen, entities_for
-from .mapping import BATTERY_STATES, EV_CHARGING_STATES, GRID_STATES, INVERTER_STATUSES
+from .mapping import BATTERY_MODES, BATTERY_STATES, EV_CHARGING_STATES, GRID_STATES, INVERTER_STATUSES
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -166,6 +166,40 @@ SENSORS: tuple[SolarEdgeSensorDescription, ...] = (
         native_unit_of_measurement=PERCENTAGE,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
+    # The app's battery settings (read only for now).
+    SolarEdgeSensorDescription(
+        kind=KIND_BATTERY,
+        key="mode",
+        translation_key="mode",
+        optional=True,
+        device_class=SensorDeviceClass.ENUM,
+        options=BATTERY_MODES,
+    ),
+    SolarEdgeSensorDescription(
+        kind=KIND_BATTERY,
+        key="backup_reserve",
+        translation_key="backup_reserve",
+        optional=True,
+        native_unit_of_measurement=PERCENTAGE,
+        suggested_display_precision=0,
+    ),
+    SolarEdgeSensorDescription(
+        kind=KIND_BATTERY,
+        key="backup_reserve_limit",
+        translation_key="backup_reserve_limit",
+        optional=True,
+        native_unit_of_measurement=PERCENTAGE,
+        suggested_display_precision=0,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+    ),
+    SolarEdgeSensorDescription(
+        kind=KIND_BATTERY,
+        key="weather_guard_status",
+        translation_key="weather_guard_status",
+        optional=True,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
     # EV charger
     _power(KIND_EV),
     SolarEdgeSensorDescription(
@@ -229,7 +263,12 @@ class SolarEdgeSensor(SolarEdgeEntity, SensorEntity):
 
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
-        """A load controller's power is estimated unless it has a meter."""
+        """A load controller's power is estimated unless it has a meter; the battery
+        mode carries SolarEdge's own code, which names an "other" mode."""
         if self.entity_description.kind == KIND_HLC and "power_measured" in self.values:
             return {"estimated": not self.values["power_measured"]}
+        if self.entity_description.key == "mode" and "mode_code" in self.values:
+            return {"code": self.values["mode_code"]}
+        if self.entity_description.key == "backup_reserve" and "backup_reserve_editable" in self.values:
+            return {"editable": self.values["backup_reserve_editable"]}
         return None
