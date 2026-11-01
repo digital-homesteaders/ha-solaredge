@@ -219,7 +219,9 @@ def test_real_battery_settings() -> None:
     [
         ({"batteryMode": "MSC"}, {"mode": "maximize_self_consumption", "mode_code": "MSC"}),
         ({"batteryMode": "MANUAL_TOU"}, {"mode": "time_of_use", "mode_code": "MANUAL_TOU"}),
-        # A code not known yet (the app's "Installer Settings") keeps its code.
+        # The app's "Installer Settings", from a real site.
+        ({"batteryMode": "INSTALLER"}, {"mode": "installer", "mode_code": "INSTALLER"}),
+        # A code not known yet keeps its code.
         ({"batteryMode": "SOMETHING_NEW"}, {"mode": "other", "mode_code": "SOMETHING_NEW"}),
         # A site without a battery answers with nulls.
         ({"batteryMode": None, "touConfiguration": None}, {}),

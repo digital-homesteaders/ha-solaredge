@@ -211,7 +211,7 @@ reported per site.
 | State | charging, discharging, idle |
 | Charged, Discharged | kWh into and out of the batteries, added up from the battery power at each poll. `total_increasing`, for the Energy dashboard. |
 | Stored energy, State of health *(optional)* | stored kWh, summed over the batteries; full-pack capacity as % of the nameplate |
-| Battery mode *(optional)* | the app's *Battery Mode*: maximize self-consumption, time of use, or other. The `code` attribute holds SolarEdge's own code (the app's *Installer Settings* shows up as other until its code is known). Read every 15 minutes. |
+| Battery mode *(optional)* | the app's *Battery Mode*: installer settings, maximize self-consumption, time of use, backup only, or other. The `code` attribute holds SolarEdge's own code. Read every 15 minutes. |
 | Backup reserve *(optional)* | the app's *Backup Reserve* %. The `editable` attribute says whether SolarEdge lets this site change it. |
 | Backup reserve limit *(optional, diagnostic, off by default)* | the highest reserve SolarEdge allows |
 | Weather Guard *(optional, binary sensor)* | on when the app's *Weather Guard* is enabled; not whether it is holding the battery right now |

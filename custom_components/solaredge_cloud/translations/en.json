@@ -185,8 +185,10 @@
       "battery_mode": {
         "name": "Battery mode",
         "state": {
+          "installer": "Installer settings",
           "maximize_self_consumption": "Maximize self-consumption",
           "time_of_use": "Time of use",
+          "backup_only": "Backup only",
           "other": "Other"
         }
       },
