@@ -21,7 +21,7 @@ Domain: `solaredge_cloud`. It can run next to Home Assistant's own
 | --- | --- | --- |
 | API | SolarEdge's public Monitoring API (`monitoringapi.solaredge.com`), with an API key from the installer or the portal. Optionally a web login, used only for per-module (optimizer) statistics. | The private API behind the mySolarEdge phone app (`monitoring.solaredge.com/services/m/...`), with your mySolarEdge login. |
 | Live power | Every 15 minutes. The public API allows 300 requests a day per site. | Every 60 s by default (30–300 s). |
-| Batteries | Yes | Yes, plus state of health, stored energy, battery mode, backup reserve and Weather Guard (read only) |
+| Batteries | Yes | Yes, plus state of health, stored energy, battery mode and Weather Guard (read only), and backup reserve control |
 | EV chargers, load controllers | No | Yes, including on/off/auto control |
 | Stability | Documented, supported API | Not documented. SolarEdge can change it without notice. |
 
@@ -212,13 +212,16 @@ reported per site.
 | Charged, Discharged | kWh into and out of the batteries, added up from the battery power at each poll. `total_increasing`, for the Energy dashboard. |
 | Stored energy, State of health *(optional)* | stored kWh, summed over the batteries; full-pack capacity as % of the nameplate |
 | Battery mode *(optional)* | the app's *Battery Mode*: installer settings, maximize self-consumption, time of use, backup only, or other. The `code` attribute holds SolarEdge's own code. Read every 15 minutes. |
-| Backup reserve *(optional)* | the app's *Backup Reserve* %. The `editable` attribute says whether SolarEdge lets this site change it. |
+| Backup reserve *(optional, number)* | the app's *Backup Reserve* %, and setting it. The slider goes up to the limit SolarEdge gives for the site. The `editable` attribute says whether SolarEdge lets this site change it; if not, setting it is refused. |
+| Backup reserve duration *(config select)* | how long a reserve set from Home Assistant lasts: unlimited, 24, 48 or 72 hours, as in the app. Kept by the integration (across restarts) and used for the next reserve you set; choosing it changes nothing at SolarEdge. |
+| Backup reserve until *(optional, timestamp)* | when a timed reserve ends and SolarEdge goes back to the previous one. Appears with the first timed reserve; unknown while it is unlimited. |
 | Backup reserve limit *(optional, diagnostic, off by default)* | the highest reserve SolarEdge allows |
 | Weather Guard *(optional, binary sensor)* | on when the app's *Weather Guard* is enabled; not whether it is holding the battery right now |
 | Weather Guard status *(optional, diagnostic)* | SolarEdge's status text, such as "Not available due to not backup reserve" |
 
-These battery settings are read only for now. Changing them from Home
-Assistant needs endpoints that aren't known yet.
+The backup reserve can be changed; it was tested on a real site with the
+app open beside it (set, timed and unlimited). Battery mode and Weather
+Guard are read only for now.
 
 Checked against a real site with two 9.7 kWh SolarEdge Home Batteries: stored
 energy matches SolarEdge's own total. SolarEdge's charge and discharge
@@ -272,8 +275,9 @@ real time or not communicating, or a devices list not updated for 10 minutes.
 
 ### 0.3.0
 
-- **Battery settings from the app, read only:** battery mode, backup reserve (with
-  whether it can be edited and its limit), Weather Guard and its status. The reserve
+- **Backup reserve control:** set the reserve for unlimited, 24, 48 or 72 hours, with
+  a sensor for when a timed reserve ends.
+- **Battery settings from the app, read only:** battery mode, Weather Guard and its status. The reserve
   and Weather Guard come from the battery answer already read every 5 minutes; the
   battery mode is one extra request per site every 15 minutes. The diagnostics
   download includes the raw battery-mode answer.
@@ -313,8 +317,8 @@ with the new OAuth login.
 - **EV charger and load controller fields with real hardware.** The mapping
   follows 2.0.0 and the real EV/load-controller answers in its tests. The
   battery fields are checked against one real two-battery site. The battery
-  mode, backup reserve and Weather Guard have not been compared with the app
-  yet.
+  mode and backup reserve match the app on that site; Weather Guard has not
+  been compared yet.
 - **Whether the inverter's upload moment works for energy-tick timing on
   sites with several inverters.**
 

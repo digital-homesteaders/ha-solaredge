@@ -201,6 +201,7 @@ def test_real_battery_settings() -> None:
         "backup_reserve": 100.0,
         "backup_reserve_limit": 72,
         "backup_reserve_editable": False,
+        # userBackupReserveCommandExpiration null in this answer: nothing to say.
         "weather_guard": True,
         "weather_guard_status": "Not available due to not backup reserve",
     }
@@ -211,6 +212,11 @@ def test_real_battery_settings() -> None:
         "weather_guard": False
     }
     assert mapping.battery_settings({"devicesByType": {}}) == {}
+    # A timed reserve lapses at an epoch second; an unlimited one (0) clears the time.
+    timed = mapping.battery_settings({"storageInfo": {"userBackupReserveCommandExpiration": 1793747364}})
+    assert timed["backup_reserve_expires"].isoformat() == "2026-11-03T23:09:24+00:00"
+    unlimited = mapping.battery_settings({"storageInfo": {"userBackupReserveCommandExpiration": 0}})
+    assert "backup_reserve_expires" in unlimited and unlimited["backup_reserve_expires"] is None
     assert mapping.battery_settings(None) == {}
 
 

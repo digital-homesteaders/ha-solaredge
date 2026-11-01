@@ -12,6 +12,7 @@ is not producing (night, idle) reports 0 W, and the EV charger has no
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping, Sequence
+from datetime import UTC, datetime
 from typing import Any
 
 from .const import GRID_IDLE_W, STALE_DATA_MS
@@ -43,7 +44,7 @@ GRID_STATES = ["import", "export", "idle"]
 
 # Values that a None clears instead of leaving the last one: an unknown status,
 # and no optimizer temperature yet today (before sunrise).
-CLEARABLE = frozenset({"status", "optimizer_temperature_max"})
+CLEARABLE = frozenset({"status", "optimizer_temperature_max", "backup_reserve_expires"})
 
 # EV connectionStatus (lower case in the powerflow, upper case in getSiteDevices)
 # -> [charging state, charging]
@@ -451,6 +452,12 @@ def battery_energy(batteries: Sequence[Mapping[str, Any]], to_kwh: float) -> dic
     return {key: value for key, value in values.items() if value is not None}
 
 
+# Marks a value to clear (CLEARABLE) rather than leave out.
+CLEAR = object()
+
+# Backup reserve durations the app offers -> hours (0 = unlimited).
+RESERVE_DURATIONS = {"unlimited": 0, "24_hours": 24, "48_hours": 48, "72_hours": 72}
+
 # batteryMode codes -> battery_mode states. INSTALLER (the app's "Installer
 # Settings") is from a real site; MSC and MANUAL_TOU from nerd2/solaredgego;
 # BACKUP_ONLY from the app's code. Anything else is "other", with the code beside it.
@@ -489,6 +496,12 @@ def battery_settings(response: Any) -> dict[str, Any]:
         values["backup_reserve_limit"] = finite(info.get("backupReserveControlUpToLimit"))
     if isinstance(editable := info.get("portiaBackupReserveEditCapable"), bool):
         values["backup_reserve_editable"] = editable
+    expires = finite(info.get("userBackupReserveCommandExpiration"))
+    if expires is not None:
+        # Epoch seconds when a timed reserve lapses; 0 for an unlimited one.
+        values["backup_reserve_expires"] = (
+            datetime.fromtimestamp(expires, tz=UTC) if expires > 0 else CLEAR
+        )
     configuration = info.get("weatherGuardServiceConfiguration")
     if isinstance(configuration, str) and configuration:
         values["weather_guard"] = configuration.upper() == "ENABLED"
@@ -496,7 +509,7 @@ def battery_settings(response: Any) -> dict[str, Any]:
     if isinstance(status, str) and status:
         # NOT_AVAILABLE_DUE_TO_NOT_BACKUP_RESERVE -> "Not available due to not backup reserve".
         values["weather_guard_status"] = status.replace("_", " ").capitalize()
-    return {key: value for key, value in values.items() if value is not None}
+    return {key: (None if value is CLEAR else value) for key, value in values.items() if value is not None}
 
 
 def battery_flow_kwh(previous_w: float, current_w: float, seconds: float) -> tuple[float, float]:

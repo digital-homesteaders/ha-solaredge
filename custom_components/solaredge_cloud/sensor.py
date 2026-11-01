@@ -175,13 +175,13 @@ SENSORS: tuple[SolarEdgeSensorDescription, ...] = (
         device_class=SensorDeviceClass.ENUM,
         options=BATTERY_MODES,
     ),
+    # When a timed backup reserve lapses; unknown while it is unlimited.
     SolarEdgeSensorDescription(
         kind=KIND_BATTERY,
-        key="backup_reserve",
-        translation_key="backup_reserve",
+        key="backup_reserve_expires",
+        translation_key="backup_reserve_expires",
         optional=True,
-        native_unit_of_measurement=PERCENTAGE,
-        suggested_display_precision=0,
+        device_class=SensorDeviceClass.TIMESTAMP,
     ),
     SolarEdgeSensorDescription(
         kind=KIND_BATTERY,
@@ -259,7 +259,7 @@ class SolarEdgeSensor(SolarEdgeEntity, SensorEntity):
     @property
     def native_value(self) -> Any:
         """The reading."""
-        return self.value
+        return self.reading
 
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
@@ -269,6 +269,4 @@ class SolarEdgeSensor(SolarEdgeEntity, SensorEntity):
             return {"estimated": not self.values["power_measured"]}
         if self.entity_description.key == "mode" and "mode_code" in self.values:
             return {"code": self.values["mode_code"]}
-        if self.entity_description.key == "backup_reserve" and "backup_reserve_editable" in self.values:
-            return {"editable": self.values["backup_reserve_editable"]}
         return None

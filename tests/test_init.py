@@ -12,6 +12,7 @@ from freezegun.api import FrozenDateTimeFactory
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import STATE_UNAVAILABLE
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.util import dt as dt_util
@@ -172,15 +173,51 @@ async def test_battery_settings_from_a_real_answer(hass: HomeAssistant, replay: 
     replay.answers["getSiteBatteries"] = load_fixture("batteries-two.json")["response"]
     replay.answers["getSiteBatteryMode"] = {"batteryMode": "SOMETHING_NEW"}
     await setup(hass, entry_data)
-    assert state(hass, "sensor", f"{SITE}_battery_backup_reserve") == "100.0"
+    assert state(hass, "number", f"{SITE}_battery_backup_reserve") == "100.0"
     assert state(hass, "sensor", f"{SITE}_battery_weather_guard_status") == "Not available due to not backup reserve"
     assert state(hass, "binary_sensor", f"{SITE}_battery_weather_guard") == "on"
-    reserve = hass.states.get(entity_id(hass, "sensor", f"{SITE}_battery_backup_reserve"))
+    reserve = hass.states.get(entity_id(hass, "number", f"{SITE}_battery_backup_reserve"))
     assert reserve.attributes["editable"] is False and reserve.attributes["unit_of_measurement"] == "%"
+    # SolarEdge's limit for the site is the slider's top.
+    assert reserve.attributes["max"] == 72
+    # Not editable: refused before anything is sent.
+    with pytest.raises(HomeAssistantError, match="doesn't let this site"):
+        await hass.services.async_call(
+            "number", "set_value", {"entity_id": reserve.entity_id, "value": 30}, blocking=True
+        )
+    assert replay.count("setBackupReserve") == 0
     mode = hass.states.get(entity_id(hass, "sensor", f"{SITE}_battery_mode"))
     assert (mode.state, mode.attributes["code"]) == ("other", "SOMETHING_NEW")
     # The limit is a diagnostic, off by default.
     assert entity_id(hass, "sensor", f"{SITE}_battery_backup_reserve_limit") is not None
+
+
+async def test_set_backup_reserve_for_the_chosen_duration(hass: HomeAssistant, replay: ReplayClient, frozen, entry_data) -> None:
+    answer = load_fixture("batteries-two.json")["response"]
+    answer["storageInfo"].update(portiaBackupReserveEditCapable=True, userBackupReserveValue=20.0, userBackupReserveCommandExpiration=0)
+    replay.answers["getSiteBatteries"] = answer
+    entry = await setup(hass, entry_data)
+    number = entity_id(hass, "number", f"{SITE}_battery_backup_reserve")
+    duration = entity_id(hass, "select", f"{SITE}_battery_backup_reserve_duration")
+    assert hass.states.get(duration).state == "unlimited"
+    # Unlimited is sent as 0 hours.
+    await hass.services.async_call("number", "set_value", {"entity_id": number, "value": 25}, blocking=True)
+    assert replay.calls[-1] == ("setBackupReserve", (SITE, 25, 0))
+    assert hass.states.get(number).state == "25.0"
+    # Unlimited has no end: the "until" sensor waits for a timed reserve.
+    assert er.async_get(hass).async_get_entity_id("sensor", DOMAIN, f"{SITE}_battery_backup_reserve_expires") is None
+    # 48 hours: the reserve shows its end right away.
+    await hass.services.async_call("select", "select_option", {"entity_id": duration, "option": "48_hours"}, blocking=True)
+    await hass.services.async_call("number", "set_value", {"entity_id": number, "value": 30}, blocking=True)
+    assert replay.calls[-1] == ("setBackupReserve", (SITE, 30, 48))
+    assert state(hass, "sensor", f"{SITE}_battery_backup_reserve_expires") == "2026-10-17T11:00:00+00:00"
+    # The choice survives a restart.
+    assert entry.runtime_data.reserve_duration(SITE) == "48_hours"
+    # A refusal is reported, and the shown reserve stays.
+    replay.fail["setBackupReserve"] = SolarEdgeApiError("backupReserve: Invalid parameter {} in request")
+    with pytest.raises(HomeAssistantError, match="did not accept the backup reserve"):
+        await hass.services.async_call("number", "set_value", {"entity_id": number, "value": 40}, blocking=True)
+    assert hass.states.get(number).state == "30.0"
 
 
 async def test_default_and_custom_poll_interval(hass: HomeAssistant, replay: ReplayClient, entry_data) -> None:

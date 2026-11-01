@@ -585,6 +585,27 @@ class SolarEdgeCloudClient:
             json_body=state,
         )
 
+    async def set_backup_reserve(self, site_id: str, percent: int, hours: int) -> None:
+        """Set the backup reserve for `hours` hours; 0 is unlimited, as in the app.
+
+        Checked on a real site (2026-11-01). The field names come from the app's
+        code. SolarEdge answers HTTP 200 even when it refuses: the body's status
+        says PASSED or FAILED. Without the duration it answers FAILED ("Invalid
+        parameter {} in request") but may still apply the value for 24 hours,
+        so the duration is always sent.
+        """
+        answer = await self.request(
+            "PUT",
+            f"{HOME_AUTOMATION_URL}/storage/{site_id}/backupReserve",
+            json_body={"backupReserve": percent, "backupReserveDurationInHours": hours},
+        )
+        if isinstance(answer, dict) and answer.get("status") not in (None, "PASSED"):
+            messages = [m.get("message") for m in answer.get("errorMessages") or [] if isinstance(m, dict)]
+            raise SolarEdgeApiError(
+                f"backupReserve: {'; '.join(m for m in messages if m) or answer.get('status')}",
+                status=answer.get("httpStatus") if isinstance(answer.get("httpStatus"), int) else None,
+            )
+
     async def get_site_batteries(self, site_id: str) -> dict[str, Any]:
         """Batteries under devicesByType.BATTERY."""
         return await self.request(

@@ -70,4 +70,4 @@ class SolarEdgeBinarySensor(SolarEdgeEntity, BinarySensorEntity):
     @property
     def is_on(self) -> bool | None:
         """The reading."""
-        return self.value
+        return self.reading
